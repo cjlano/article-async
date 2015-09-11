@@ -177,3 +177,10 @@ Nous avons maintenant deux façons d'exécuter une nouvelle coroutine :
 * `yield from launch(coroutine())` lance la coroutine dans une tâche séparée
   pour que celle-ci s'exécute *en concurrence* et reprend aussitôt l'exécution de
   la tâche en cours.
+
+La fonction équivalente à `launch()` dans `asyncio` est `asyncio.async()`.
+Notez toutefois que cette fonction est dépréciée (à cause de son nom) dans
+Python 3.5, qui recommande d'utiliser maintenant `asyncio.ensure_future()`.
+
+Ces deux fonctions retournent la tâche encapsulée dans un objet appelé "futur"
+(`Future`), correspondant grosso-modo à notre classe `Task`.
