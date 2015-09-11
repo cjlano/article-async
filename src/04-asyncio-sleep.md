@@ -1,4 +1,4 @@
-# Exemple n°4 : Modélisons le serveur du *fast food* avec `asyncio
+# Exemple n°4 : Modélisons le serveur du *fast food* avec `asyncio`
 
 Maintenant que nous avons compris comment fonctionne sa boucle événementielle,
 il est temps de nous mettre en jambes avec `asyncio` en l'utilisant pour
@@ -6,7 +6,7 @@ modéliser l'exemple du début de cet article : l'employé de *fast food*.
 
 Voici d'abord à quoi ressemble le programme dans sa version synchrone.
 
-```python3
+```python
 from time import sleep
 from datetime import datetime
 
@@ -96,7 +96,7 @@ fonction synchrones des coroutines asynchrones dans du code utilisant
 
 Exécutons-le maintenant :
 
-```python3
+```python
 >>> import asyncio
 >>> loop = asyncio.get_event_loop()
 >>> loop.run_until_complete(serve('A'))
@@ -114,7 +114,7 @@ Nous sommes passés de 14 secondes à 8 secondes.
 
 Et pour servir deux clients à la fois ?
 
-```python3
+```python
 >>> loop.run_until_complete(asyncio.wait([serve('A'), serve('B')]))
 Préparation de la commande de B
 Préparation de la commande de A
@@ -154,7 +154,7 @@ verrouiller une ressource de manière à ce qu'une seule tâche puisse y accéde
 la fois, en utilisant ce que l'on appelle un **verrou** (`asyncio.Lock`).
 Plaçons un verrou sur notre machine à soda :
 
-```python3
+```python
 SODA_LOCK = asyncio.Lock()
 
 @asyncio.coroutine
@@ -172,7 +172,7 @@ peut se modéliser en utilisant un **sémaphore** (`asyncio.Semaphore`), qui est
 une sorte de "verrou multiple". On l'utilise pour qu'au plus N tâches
 puissent exécuter un morceau de code à un instant donné :
 
-```python3
+```python
 BURGER_SEM = asyncio.Semaphore(3)
 
 @asyncio.coroutine
@@ -188,7 +188,7 @@ Pour le bac à frites, nous allons prendre plus de risques. Si vous connaissez
 la programmation concurrente au moyen de threads, vous réagirez sûrement à la
 vue de cet exemple :
 
-```python3
+```python
 FRIES_PARTS = 0
 FRIES_LOCK = asyncio.Lock()
 
@@ -216,7 +216,7 @@ met des frites à cuire avant de pouvoir en récupérer une portion.
 
 Voyons voir ce que cela donne à l'exécution :
 
-```python3
+```python
 >>> loop.run_until_complete(asyncio.wait([serve('A'), serve('B')]))
 Préparation de la commande de B
 Préparation de la commande de A
@@ -270,7 +270,7 @@ dégradent, néanmoins. Il est plutôt rare que les clients passent leurs
 commandes tous en même temps. Une modélisation plus proche de la réalité serait
 que ces dix commandes arrivent à une seconde d'intervalle :
 
-```python3
+```python
 @asyncio.coroutine
 def test():
     tasks = []
@@ -285,7 +285,7 @@ def test():
 Dans ces conditions, les temps d'attente individuels de chaque client sont
 assez largement réduits :
 
-```python3
+```python
 >>> loop = asyncio.get_event_loop()
 >>> loop.run_until_complete(test())
 Préparation de la commande de A
