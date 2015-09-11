@@ -117,7 +117,7 @@ class Loop:
             msg = task.run()
 
             if task.is_done():
-                print("Task {} terminated: {}".format(task.tid, task))
+                print(task)
                 continue
 
             self.schedule(task)
