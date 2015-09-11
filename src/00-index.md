@@ -29,7 +29,7 @@ De façon synchrone :
 * Préparer les frites:
     * Mettre des frites à chauffer.
     * Attendre que les frites soient cuites (2 minutes).
-    * Récupérer des frites pour `A` et les poser sur le plateau.
+    * Récupérer des frites et les poser sur le plateau.
 * Préparer la boisson:
     * Placer un gobelet dans la machine à soda.
     * Remplir le gobelet (30 secondes).
