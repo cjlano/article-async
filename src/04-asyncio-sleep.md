@@ -90,8 +90,8 @@ def serve(client):
 ```
 
 Remarquez que nous avons décoré toutes nos coroutines avec le décorateur
-`@asyncio.coroutine` : il ne s'agit que d'une convention pour reconnaître les
-fonction synchrones des coroutines asynchrones dans du code utilisant
+`@asyncio.coroutine` : il ne s'agit que d'une convention pour distinguer les
+fonctions synchrones des coroutines asynchrones dans du code utilisant
 `asyncio`. En dehors de l'indice visuel, ce décorateur est *sans effet*.
 
 Exécutons-le maintenant :
