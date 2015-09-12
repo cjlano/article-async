@@ -45,6 +45,19 @@ sorcier. Dès lors, on peut imaginer créer une petite boucle événementielle p
 exécuter cette coroutine. Il suffit en fait de la considérer comme une file de
 tâches à exécuter jusqu'à épuisement.
 
+En Python, l'objet le plus pratique pour modéliser une *file d'attente* est la
+classe standard `collections.deque` (*double-ended queue*). Cette classe
+possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :
+
+* `appendleft()` pour ajouter un élément au tout début de la liste,
+* `popleft()` pour retirer (et retourner) le premier élément de la liste.
+
+Ainsi, puisqu'il s'agit d'une file d'attente, il faut ajouter les éléments à
+une extrémité de la file (`append()`), et consommer ceux de l'autre extrémité
+(`popleft()`). On pourrait arguer qu'il est possible d'ajouter des éléments
+n'importe où dans une liste avec la méthode `insert()`, mais la classe `deque`
+est vraiment *faite pour* créer des files et des piles : ses opérations aux
+extrémités sont bien plus efficaces que la méthode `insert()`.
 
 ```python
 >>> from collections import deque
