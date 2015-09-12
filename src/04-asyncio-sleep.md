@@ -266,9 +266,12 @@ Commande de F prête en 0:00:20.026096
 ```
 
 On se rend compte que les performances de notre serveur de fast-food se
-dégradent, néanmoins. Il est plutôt rare que les clients passent leurs
-commandes tous en même temps. Une modélisation plus proche de la réalité serait
-que ces dix commandes arrivent à une seconde d'intervalle :
+dégradent plus ou moins, même si on est toujours loin des 140 secondes que le
+serveur aurait pris s'il avait traité toutes ces commandes de façon synchrone.
+
+Cela dit, il est plutôt rare que les clients passent leurs commandes tous en
+même temps. Une modélisation plus proche de la réalité serait que ces dix
+commandes arrivent à deux secondes d'intervalle :
 
 ```python
 @asyncio.coroutine
@@ -278,12 +281,59 @@ def test():
         # appel équivalent à notre fonction `launch()`
         task = asyncio.async(serve(client))
         tasks.append(task)
-        yield from asyncio.sleep(1)
+        yield from asyncio.sleep(2)
     yield from asyncio.wait(tasks)
 ```
 
 Dans ces conditions, les temps d'attente individuels de chaque client sont
 assez largement réduits :
+
+```python
+>>> loop = asyncio.get_event_loop()
+>>> loop = asyncio.run_until_complete(test())
+Préparation de la commande de A
+Préparation de la commande de B
+Préparation de la commande de C
+Préparation de la commande de D
+Commande de A prête en 0:00:08.004599
+Commande de B prête en 0:00:06.002353
+Préparation de la commande de E
+Commande de C prête en 0:00:04.002907
+Préparation de la commande de F
+Commande de D prête en 0:00:04.004343
+Préparation de la commande de G
+Commande de E prête en 0:00:04.004445
+Préparation de la commande de H
+Préparation de la commande de I
+Commande de F prête en 0:00:08.005227
+Commande de G prête en 0:00:06.005087
+Préparation de la commande de J
+Commande de H prête en 0:00:04.003595
+Commande de I prête en 0:00:04.003620
+Commande de J prête en 0:00:04.004184
+```
+
+À raison d'un client toutes les deux secondes, notre serveur est capable de
+traiter des commandes avec un temps moyen de 5.2 secondes, le maximum étant 8
+secondes et le minimum à 4 secondes.
+
+Et si nous *stressions* un peu notre serveur et qu'on lui passait une commande
+par seconde ?
+
+```python
+@asyncio.coroutine
+def test():
+    tasks = []
+    for client in 'ABCDEFGHIJ':
+        task = asyncio.async(serve(client))
+        tasks.append(task)
+        yield from asyncio.sleep(1)
+    yield from asyncio.wait(tasks)
+```
+
+Comme prévu, celui-ci, sous la pression, est un peu moins efficace à cause des
+contraintes des différentes machines qu'il utilise, même si l'on reste tout à
+fait loin de l'inefficacité pathologique de la version synchrone :
 
 ```python
 >>> loop = asyncio.get_event_loop()
@@ -310,7 +360,8 @@ Commande de I prête en 0:00:10.002911
 Commande de J prête en 0:00:11.004703
 ```
 
-On peut alors se demander à quel endroit le service est ralenti :
+On peut se demander à quel endroit le service est ralenti quand on sert 1
+client par seconde :
 
 * S'agit-il de la machine à sodas, qui produit un soda toutes les 2 secondes ?
 * S'agit-il du bac à frites, qui peut produire 5 portions en 8 secondes ?
@@ -318,11 +369,11 @@ On peut alors se demander à quel endroit le service est ralenti :
   reste limitée à trois cuisiniers ?
 
 Les réponses à ces questions vous sont laissées en guise d'exercice. Vous
-pouvez essayer d'apporter les modifications suivantes au modèle :
+pouvez essayer d'apporter les modifications suivantes au modèle, pour aider le
+gérant du restaurant à optimiser son service :
 
-* Une seconde machine à sodas aussi rapide que la première a été mise en place.
-* Le restaurant achète un nouveau bac à frites pouvant produire 6 portions en 7
-  secondes.
-* La cuisine embauche un quatrième cuisinier.
+* Mettre en place une seconde machine à sodas aussi rapide que la première.
+* Acheter un nouveau bac à frites pouvant produire 6 portions en 7 secondes.
+* Embaucher un quatrième cuisinier.
 
 Bon courage !
