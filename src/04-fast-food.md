@@ -16,7 +16,7 @@ def get_burger(client):
     print("< Le burger de '{}' est prêt".format(client))
 
 def get_fries(client):
-    print("> Mettre des frites pour à cuire pour {}".format(client))
+    print("> Mettre des frites à cuire pour {}".format(client))
     sleep(8)
     print("< Les frites de '{}' sont prêtes".format(client))
 
@@ -42,7 +42,7 @@ Résultat : la commande est prête en 14 secondes.
 Préparation de la commande de 'A'
 > Commande du burger pour 'A' en cuisine
 < Le burger de 'A' est prêt
-> Mettre des frites pour à cuire pour A
+> Mettre des frites à cuire pour A
 < Les frites de 'A' sont prêtes
 > Remplissage du gobelet de soda pour A
 < Le soda de 'A' est prêt
@@ -66,7 +66,7 @@ def get_burger(client):
 
 @asyncio.coroutine
 def get_fries(client):
-    print("> Mettre des frites pour à cuire pour {}".format(client))
+    print("> Mettre des frites à cuire pour {}".format(client))
     yield from asyncio.sleep(8)
     print("< Les frites de {} sont prêtes".format(client))
 
@@ -102,7 +102,7 @@ Exécutons-le maintenant :
 >>> loop.run_until_complete(serve('A'))
 Préparation de la commande de A
 > Commande du burger pour A en cuisine
-> Mettre des frites pour à cuire pour A
+> Mettre des frites à cuire pour A
 > Remplissage du gobelet de soda pour A
 < Le soda de A est prêt
 < Le burger de A est prêt
@@ -118,12 +118,12 @@ Et pour servir deux clients à la fois ?
 >>> loop.run_until_complete(asyncio.wait([serve('A'), serve('B')]))
 Préparation de la commande de B
 Préparation de la commande de A
-> Mettre des frites pour à cuire pour B
+> Mettre des frites à cuire pour B
 > Commande du burger pour B en cuisine
 > Remplissage du gobelet de soda pour B
 > Remplissage du gobelet de soda pour A
 > Commande du burger pour A en cuisine
-> Mettre des frites pour à cuire pour A
+> Mettre des frites à cuire pour A
 < Le soda de B est prêt
 < Le soda de A est prêt
 < Le burger de B est prêt
