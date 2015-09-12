@@ -192,15 +192,15 @@ class Task:
             self.status = STATUS_ERROR
             self.error_value = err
 
-        def is_done(self):
-            return self.status in {STATUS_FINISHED, STATUS_ERROR}
+    def is_done(self):
+        return self.status in {STATUS_FINISHED, STATUS_ERROR}
 
-        def __repr__(self):
-            return "<Task '{name}' [{status}] ({res!r})>".format(
-                name=self.name,
-                status=self.status,
-                res=(self.return_value or self.error_value)
-            )
+    def __repr__(self):
+        return "<Task '{name}' [{status}] ({res!r})>".format(
+            name=self.name,
+            status=self.status,
+            res=(self.return_value or self.error_value)
+        )
 ```
 
 Cette classe a une utilisation très simple. On lui passe une coroutine, et on
