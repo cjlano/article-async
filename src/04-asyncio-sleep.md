@@ -139,13 +139,13 @@ très réaliste.
 
 En effet :
 
-* la machine à soda ne peut faire couler qu'un seul soda à la fois, or ici les deux
-  sodas ont été préparés simultanément.
-* la cuisine ne comporte que 3 cuisiniers, donc elle peut seulement produire 3
-  hamburgers simultanément
+* la machine à soda ne peut faire couler qu'un seul soda à la fois, or ici les
+  deux sodas ont été préparés simultanément.
+* la cuisine ne comporte que 3 cuisiniers, donc on ne peut avoir au maximum que
+  3 hamburgers en cours de préparation à un instant donné.
 * le bac à frites fait cuire en général 5 portions de frites en même temps, or
-  ici il a été utilisé deux fois simultanément en parallèle pour produire
-  uniquement deux portions de frites.
+  ici il a été utilisé deux fois en parallèle pour produire uniquement deux
+  portions de frites.
 
 Comment modéliser ces contraintes ?
 
@@ -167,10 +167,18 @@ def get_soda(client):
         print("< Le soda de {} est prêt".format(client))
 ```
 
-Pour la cuisine, seuls 3 burgers peuvent être fabriqués en même temps. Cela
+Le `with (yield from SODA_LOCK)` signifie que lorsque le serveur arrive à la
+machine à soda pour y déposer un gobelet :
+
+* soit la machine est libre (déverrouillée), auquel cas il peut la verrouiller
+  pour l'utiliser immédiatement,
+* soit celle-ci est déjà en train de fonctionner, auquel cas il attend que le
+  soda en cours de préparation soit prêt avant de se servir de la machine.
+
+Passons à la cuisine. Seuls 3 burgers peuvent être fabriqués en même temps. Cela
 peut se modéliser en utilisant un **sémaphore** (`asyncio.Semaphore`), qui est
 une sorte de "verrou multiple". On l'utilise pour qu'au plus N tâches
-puissent exécuter un morceau de code à un instant donné :
+puissent exécuter un morceau de code à un instant donné.
 
 ```python
 BURGER_SEM = asyncio.Semaphore(3)
@@ -184,9 +192,26 @@ def get_burger(client):
         print("< Le burger de {} est prêt".format(client))
 ```
 
-Pour le bac à frites, nous allons prendre plus de risques. Si vous connaissez
-la programmation concurrente au moyen de threads, vous réagirez sûrement à la
-vue de cet exemple :
+Le `with (yield from BURGER_SEM)` veut dire que lorsqu'une commande est passée
+en cuisine :
+
+* soit il y a un cuisinier libre, et celui-ci commence immédiatement à
+  préparer le hamburger,
+* soit tous les cuisiniers sont occupés, auquel cas on attend qu'il y en ait un
+  qui se libère pour s'occuper de notre hamburger.
+
+Passons enfin au bac à frites. Cette fois, `asyncio` ne nous fournira pas
+d'objet magique, donc il va nous falloir réfléchir un peu plus. Il faut que
+l'on puisse l'utiliser *une fois* pour faire les frites des 5 prochaines
+commandes. Dans ce cas, un compteur semble une bonne idée :
+
+* Chaque fois que l'on prend une portion de frites, on décrémente le compteur ;
+* S'il n'y a plus de frites dans le bac, il faut en refaire.
+
+Mais attention, si les frites sont déjà en cours de préparation, il est inutile de
+lancer une nouvelle fournée !
+
+Voici comment on pourrait s'y prendre :
 
 ```python
 FRIES_PARTS = 0
