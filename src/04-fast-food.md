@@ -92,8 +92,8 @@ def serve(client):
 Remarquez que nous avons décoré toutes nos coroutines avec le décorateur
 `@asyncio.coroutine` : il s'agit d'une convention pour distinguer les
 fonctions synchrones des coroutines asynchrones dans du code utilisant
-`asyncio`. En dehors de l'indice visuel, ce décorateur permet de 
-s'assurer qu'une fonction donnée sera considérée par `asyncio` comme 
+`asyncio`. En dehors de l'indice visuel, ce décorateur permet de
+s'assurer qu'une fonction donnée sera considérée par `asyncio` comme
 une coroutine, même si celle-ci ne `yield` jamais.
 
 Exécutons-le maintenant :
@@ -227,10 +227,10 @@ def get_fries(client):
             "> Récupération d'une portion de frites pour {}".format(client)
         )
         if FRIES_PARTS == 0:
-            print("* Mettre des frites à cuire".format(client))
+            print("* Mettre des frites à cuire")
             yield from asyncio.sleep(8)
             FRIES_PARTS = 5
-            print("* Les frites sont prêtes".format(client))
+            print("* Les frites sont prêtes"))
         FRIES_PARTS -= 1
         print("< Les frites de {} sont prêtes".format(client))
 ```

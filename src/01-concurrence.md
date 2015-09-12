@@ -21,7 +21,7 @@ def tic_tac():
 Cette fonction, puisqu'elle utilise le mot-clé `yield`, définit une
 *coroutine*[^corogen]. Si on l'invoque, la fonction `tic_tac` retourne une
 tâche prête à être exécutée. Pour faire avancer la tâche jusqu'au prochain
-`yield`, il suffit d'itérer dessus au moyen de la builtin `next()` :
+`yield`, il suffit d'itérer dessus au moyen de la fonction standard `next()` :
 
 [^corogen]: En toute rigueur il s'agit d'un *générateur*, mais comme nous
 avons pu l'observer dans un précédent article, les générateurs de Python sont
@@ -182,6 +182,8 @@ class Task:
     def run(self):
         try:
             self.status = STATUS_RUNNING
+            # Cette ligne revient à faire la même chose que next(self.coro).
+            # Nous y reviendrons dans le prochain exemple.
             return self.coro.send(self.msg)
         except StopIteration as err:
             self.status = STATUS_FINISHED
