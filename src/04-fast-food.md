@@ -90,9 +90,11 @@ def serve(client):
 ```
 
 Remarquez que nous avons décoré toutes nos coroutines avec le décorateur
-`@asyncio.coroutine` : il ne s'agit que d'une convention pour distinguer les
+`@asyncio.coroutine` : il s'agit d'une convention pour distinguer les
 fonctions synchrones des coroutines asynchrones dans du code utilisant
-`asyncio`. En dehors de l'indice visuel, ce décorateur est *sans effet*.
+`asyncio`. En dehors de l'indice visuel, ce décorateur permet de 
+s'assurer qu'une fonction donnée sera considérée par `asyncio` comme 
+une coroutine, même si celle-ci ne `yield` jamais.
 
 Exécutons-le maintenant :
 
