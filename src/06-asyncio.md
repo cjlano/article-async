@@ -1,4 +1,4 @@
-# Exemple n°6 : Des applications réseaux avec `asyncio`
+# Exemple n°6 : Des applications réseau avec `asyncio`
 
 Le précédent exemple nous a fait toucher du doigt le concept d'*IO
 asynchrones*. Il est temps pour nous de nous familiariser avec les objets que
