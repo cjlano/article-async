@@ -69,6 +69,56 @@ même flux réseau. Ainsi, vous avez grosso-modo 4 méthodes à retenir :
 C'est plutôt simple, non ? Ces objets reposent en fait sur une autre API, un
 petit peu plus bas niveau, d'`asyncio`, qui modélise des *protocoles* que l'on
 utilise par-dessus un *transport* (TCP, UDP…). Nous ne parlerons pas de cette
-API dans cet article, mais si vous êtes curieux, [sa
+API dans cet exemple, mais si vous êtes curieux, [sa
 documentation](https://docs.python.org/3/library/asyncio-protocol.html) est
 plutôt claire et détaillée.
+
+Cette même interface peut d'ailleurs nous permettre de créer facilement un
+serveur, au moyen de la coroutine `asyncio.start_server()` :
+
+```python
+#!/usr/bin/env python3
+import asyncio
+
+@asyncio.coroutine
+def handle_echo(reader, writer):
+    data = yield from reader.read(1024)
+    print("Message reçu :", data.decode())
+    yield from asyncio.sleep(1)
+    writer.write(data)
+    yield from writer.drain()
+    writer.close()
+
+def echo_server():
+    loop = asyncio.get_event_loop()
+    server = loop.run_until_complete(
+        asyncio.start_server(handle_echo, 'localhost', 1234)
+    )
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+
+    server.close()
+    loop.run_until_complete(server.wait_closed())
+    loop.close()
+
+if __name__ == '__main__':
+    echo_server()
+```
+
+Ici, tout le code de notre serveur se trouve dans la coroutine `handle_echo`.
+Cette coroutine accepte un `StreamReader` et un `StreamWriter`, et ne retourne
+que lorsque l'échange avec un client est terminé.
+
+Dans la fonction `echo_server()` on commence par créer un serveur en passant
+cette coroutine à `asyncio.start_server()` dans la boucle événementielle, puis
+on demande à la boucle de tourner "à l'infini" (jusqu'à ce que le processus
+soit interrompu).
+
+Notez que nous aurions pu instancier le même service, mais sur des sockets Unix
+au lieu d'un flux TCP, simplement en utilisant la fonction
+`asyncio.start_unix_server()` à la place de `asyncio.start_server()` : la
+coroutine `handle_echo`, restera la même, et sera lancée dans une nouvelle
+tâche chaque fois qu'un client se connectera.
