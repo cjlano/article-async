@@ -20,7 +20,7 @@ Sa valeur de retour se compose de deux ensembles (`set()`) :
 
 * Le premier contient les tâches qui se sont terminées normalement ;
 * Le second contient les tâches qui ne sont pas encore terminées, 
-  ont été annulées ou on quitté sur une erreur.
+  ont été annulées ou ont quitté sur une erreur.
 
 C'est cette fonction que nous allons implémenter maintenant.
 
@@ -62,7 +62,7 @@ def wait(tasks):
 ```
 
 Nous pouvons vérifier que cette nouvelle fonction marche comme prévu avec les
-coroutines suivantes:
+coroutines suivantes.
 
 ```python
 >>> def repeat(msg, times):
