@@ -3,8 +3,9 @@
 Jusqu'ici, vous vous êtes probablement aperçu que nos coroutines ne
 `yield`-aient aucune valeur. En effet, le simple fait qu'elles se suspendent
 suffit à les faire exécuter en concurrence. Néanmoins, nous avons vu dans un
-précédent article que ce mot-clé `yield` était en Python un véritable canal de
-communication entre la coroutine et le code qui l'exécute.
+[précédent article](https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/) 
+que ce mot-clé `yield` était en Python un véritable canal de communication 
+entre la coroutine et le code qui l'exécute.
 
 Ainsi, nous savons que nous pouvons faire communiquer la boucle avec les tâches
 qu'elle exécute. C'est d'ailleurs tout l'intérêt de la ligne suivante dans la
@@ -17,7 +18,7 @@ class Task:
         return self.coro.send(self.msg)
 ```
 
-Mais à quoi cela pourrait-il bien servir ? Faisons, si vous le voulez bien un
+Mais à quoi cela pourrait-il bien servir ? Faisons, si vous le voulez bien, un
 petit parallèle entre notre boucle événementielle et un système d'exploitation
 (OS).
 
@@ -36,7 +37,7 @@ Eh bien nous pourrions tout à fait transposer cette notion d'*appels système* 
 notre boucle événementielle. Et nous allons même nous servir de `yield` pour ce
 faire.
 
-Mettons nous en situation. Nous voulons que notre coroutine `example` lance
+Mettons-nous en situation. Nous voulons que notre coroutine `example` lance
 une nouvelle tâche `subtask`.
 
 La façon la plus simple de nous y prendre serait d'appeler simplement la
@@ -88,7 +89,7 @@ la boucle événementielle. On peut donc imaginer envoyer un message à la boucl
 événementielle avec le mot-clé `yield`. Ce message serait composé de deux
 éléments :
 
-* une *action* (l'ordre que l'on envoie à la boucle, ici "exécuter")
+* une *action* (l'ordre que l'on envoie à la boucle, ici « exécuter »)
 * et une *valeur* (ici, la coroutine à exécuter dans une nouvelle tâche)
 
 Notre tâche `example` ressemblerait alors à ceci :
@@ -104,8 +105,8 @@ def example():
         yield
 ```
 
-Ce message sera retourné à la boucle lorsquelle appellera `task.run()`. Il nous
-suffit de rajouter un peu de code à ce niveau pour le lire :
+Ce message sera retourné à la boucle lorsqu'elle appellera `task.run()`. Il 
+nous suffit de rajouter un peu de code à ce niveau pour le lire :
 
 ```python
 MSG_EXEC = 'EXEC'
@@ -150,7 +151,7 @@ Tâche 'subtask'
 <Task 'subtask' [FINISHED] (None)>
 ```
 
-Nous pouvons donc créer notre premier "*message système*" pour masquer les
+Nous pouvons donc créer notre premier « *message système* » pour masquer les
 détails d'implémentation à l'utilisateur:
 
 ```python
@@ -182,5 +183,5 @@ La fonction équivalente à `launch()` dans `asyncio` est `asyncio.async()`.
 Notez toutefois que cette fonction est dépréciée (à cause de son nom) dans
 Python 3.5, qui recommande d'utiliser maintenant `asyncio.ensure_future()`.
 
-Ces deux fonctions retournent la tâche encapsulée dans un objet appelé "futur"
-(`Future`), correspondant grosso-modo à notre classe `Task`.
+Ces deux fonctions retournent la tâche encapsulée dans un objet appelé 
+« futur » (`Future`), correspondant grosso-modo à notre classe `Task`.
