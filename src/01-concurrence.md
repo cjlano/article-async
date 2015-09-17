@@ -20,15 +20,20 @@ def tic_tac():
 
 Cette fonction, puisqu'elle utilise le mot-clé `yield`, définit une
 *coroutine*[^corogen]. Si on l'invoque, la fonction `tic_tac` retourne une
-tâche prête à être exécutée. Pour faire avancer la tâche jusqu'au prochain
-`yield`, il suffit d'itérer dessus au moyen de la fonction standard `next()` :
+tâche prête à être exécutée, mais n'exécute pas les instructions qu'elle 
+contient. Pour faire avancer la tâche jusqu'au prochain `yield`, il suffit 
+d'itérer dessus au moyen de la fonction standard `next()` :
 
 [^corogen]: En toute rigueur il s'agit d'un *générateur*, mais comme nous
-avons pu l'observer dans un précédent article, les générateurs de Python sont
-implémentés comme de véritables coroutines.
+avons pu l'observer dans un [précédent article](https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/), 
+les générateurs de Python sont implémentés comme de véritables coroutines.
 
 ```python
->>> task = tic_tac()
+>>> tic_tac
+<function tic_tac at 0x7efc3324c290>
+>>> task = tic_tac()  # Rien ne s'affiche. Il faut faire avancer la tâche pour exécuter les intructions de la fonction.
+>>> task
+<generator object tic_tac at 0x7fe157023280>
 >>> next(task)
 Tic
 >>> next(task)
@@ -61,7 +66,7 @@ extrémités sont bien plus efficaces que la méthode `insert()`.
 
 ```python
 >>> from collections import deque
->>> events_loop = deque()
+>>> event_loop = deque()
 ```
 
 Dotons-nous de fonctions utilitaires pour ajouter des tâches à la boucle
@@ -76,12 +81,13 @@ def schedule(loop, task):
     loop.append(task)
 
 def run_until_empty(loop):
-    while loop:
+    while loop:  # Tant que la file contient encore des tâches 
         task = loop.popleft()
         try:
             # On fait avancer la coroutine jusqu'au prochain "yield"
             next(task)
-            # Si celle-ci n'a pas fini son travail,
+            # Si celle-ci n'a pas fini son travail, 
+            # c'est-à-dire si l'exception `StopIteration` n'est pas levée, 
             # on la programme pour qu'elle le reprenne plus tard.
             schedule(loop, task)
         except StopIteration as res:
@@ -100,7 +106,7 @@ Nous pouvons maintenant nous servir de la boucle événementielle pour exécuter
 la tâche `tic_tac`:
 
 ```python
->>> run_once(events_loop, tic_tac())
+>>> run_once(event_loop, tic_tac())
 Tic
 Tac
 Task 'tic_tac' returned 'Boum!'
@@ -119,9 +125,9 @@ exécuter à boucle événementielle ?
 ...     yield
 ...     return 'spam'
 ...
->>> schedule(events_loop, tic_tac())
->>> schedule(events_loop, spam())
->>> run_until_empty(events_loop)
+>>> schedule(event_loop, tic_tac())
+>>> schedule(event_loop, spam())
+>>> run_until_empty(event_loop)
 Tic
 spam
 Tac
