@@ -125,7 +125,7 @@ Traceback (most recent call last):
 Tic
 Tac
 valeur de retour: <span class="st">&#39;Boum!&#39;</span></code></pre>
-<p>Afin de nous affranchir de la sémantique des itérateurs de Python, créons une class <code>Task</code> qui nous permettra de manipuler nos coroutines plus aisément :</p>
+<p>Afin de nous affranchir de la sémantique des itérateurs de Python, créons une classe <code>Task</code> qui nous permettra de manipuler nos coroutines plus aisément :</p>
 <pre class="sourceCode python"><code class="sourceCode python">STATUS_NEW = <span class="st">&#39;NEW&#39;</span>
 STATUS_RUNNING = <span class="st">&#39;RUNNING&#39;</span>
 STATUS_FINISHED = <span class="st">&#39;FINISHED&#39;</span>
@@ -182,7 +182,7 @@ Tac
 &lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
 &gt;&gt;&gt; task.return_value
 <span class="co">&#39;Boom!&#39;</span></code></pre>
-<p>Bien. Nous avons une classe qui nous permet de manipuler des tâches en cours d'exécution, ces tâches étant implémentées sous la forme de coroutines. Il ne nous reste plus qu'à trouver un moyen d'exécuter plusieurs coroutines de façon <strong>concurrente</strong>, c'est-à-dire en parallèle les unes des autres.</p>
+<p>Bien. Nous avons une classe qui nous permet de manipuler des tâches en cours d'exécution, ces tâches étant implémentées sous la forme de coroutines. Il ne nous reste plus qu'à trouver un moyen d'exécuter plusieurs coroutines de façon <strong>concurrente</strong>, c'est-à-dire en parallèle les unes des autres. En effet, tout l'intérêt de la programmation asynchrone est d'être capable d'occuper le programme pendant qu'une tâche donnée est en attente d'un événement.</p>
 <p>Pour cela, il suffit de construire une <em>file d'attente</em> de tâches à exécuter. En Python, l'objet le plus pratique pour modéliser une file d'attente est la classe standard <code>collections.deque</code> (<em>double-ended queue</em>). Cette classe possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :</p>
 <ul>
 <li><code>appendleft()</code> pour ajouter un élément au tout début de la liste,</li>
@@ -213,7 +213,7 @@ Tac
 &lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
 &lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;</code></pre>
 <p>Voilà qui est intéressant : la sortie des deux coroutines est entremêlée ! Cela signifie que les deux tâches ont été exécutées simultanément, de façon <strong>concurrente</strong>.</p>
-<p>Nous avons tout ce qu'il nous faut pour modéliser notre boucle événementielle dans la classe <code>Loop</code> suivante :</p>
+<p>Nous avons tout ce qu'il nous faut pour modéliser une boucle événementielle, c'est-à-dire une boucle qui s'occupe de programmer l'exécution et le réveil des tâches dont elle a la charge. Implémentons celle-ci dans la classe <code>Loop</code> suivante :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> collections <span class="ch">import</span> deque
 
 <span class="kw">class</span> Loop:
@@ -272,7 +272,7 @@ Tic
 Tac
 &lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;</code></pre>
 <p>Pas de surprise.</p>
-<p>Toute la programmation asynchrone repose sur ce genre de boucle événementielle, qui sert, en fait, d'<em>ordonnanceur</em> aux tâches en cours d'exécution. Pour vous en convaincre, regardez cet bout de code qui utilise <code>asyncio</code> :</p>
+<p>Toute la programmation asynchrone repose sur ce genre de boucle qui sert en fait d'<em>ordonnanceur</em> aux tâches en cours d'exécution. Pour vous en convaincre, regardez ce bout de code qui utilise <code>asyncio</code> :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="ch">import</span> asyncio
 &gt;&gt;&gt; loop = asyncio.get_event_loop()
 &gt;&gt;&gt; loop.run_until_complete(tic_tac())
@@ -286,7 +286,7 @@ Eggs
 Tac
 Bacon
 ({Task(&lt;tic_tac&gt;)&lt;result=<span class="st">&#39;Boom!&#39;</span>&gt;, Task(&lt;spam&gt;)&lt;result=<span class="st">&#39;SPAM!&#39;</span>&gt;}, <span class="dt">set</span>())</code></pre>
-<p>Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction <code>asyncio.wait</code> : il s'agit simplement d'une coroutine qui sert à lancer plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de retourner. <em>Nous la reprogrammerons nous-mêmes très bientôt</em>. ;)</p>
+<p>Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction <code>asyncio.wait</code> : il s'agit simplement d'une coroutine qui sert à lancer plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de retourner. Nous la reprogrammerons nous-mêmes très bientôt. ;)</p>
 <h1 id="exemple-n2-communiquer-avec-la-boucle-événementielle"><span class="header-section-number">3</span> Exemple n°2 : Communiquer avec la boucle événementielle</h1>
 <p>Jusqu'ici, vous vous êtes probablement aperçu que nos coroutines ne <code>yield</code>-aient aucune valeur. En effet, le simple fait qu'elles se suspendent suffit à les faire exécuter en concurrence. Néanmoins, nous avons vu dans un <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">précédent article</a> que ce mot-clé <code>yield</code> était en Python un véritable canal de communication entre la coroutine et le code qui l'exécute.</p>
 <p>Ainsi, nous savons que nous pouvons faire communiquer la boucle avec les tâches qu'elle exécute. C'est d'ailleurs tout l'intérêt de la ligne suivante dans la classe <code>Task</code> :</p>
