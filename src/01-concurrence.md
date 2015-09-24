@@ -20,15 +20,28 @@ def tic_tac():
 
 Cette fonction, puisqu'elle utilise le mot-clé `yield`, définit une
 *coroutine*[^corogen]. Si on l'invoque, la fonction `tic_tac` retourne une
-tâche prête à être exécutée. Pour faire avancer la tâche jusqu'au prochain
-`yield`, il suffit d'itérer dessus au moyen de la fonction standard `next()` :
+tâche prête à être exécutée, mais n'exécute pas les instructions qu'elle
+contient.
 
-[^corogen]: En toute rigueur il s'agit d'un *générateur*, mais comme nous
-avons pu l'observer dans un précédent article, les générateurs de Python sont
-implémentés comme de véritables coroutines.
+[^corogen]: En toute rigueur il s'agit d'un *générateur*, mais comme nous avons
+pu l'observer dans un [précédent
+article](https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/),
+les générateurs de Python sont implémentés comme de véritables coroutines.
 
 ```python
 >>> task = tic_tac()
+>>> task
+<generator object tic_tac at 0x7fe157023280>
+```
+
+En termes de vocabulaire, on dira que notre fonction `tic_tac` est une
+*fonction coroutine*, c'est-à-dire une fonction qui **construit une
+coroutine**. La coroutine est contenue ici dans la variable `task`.
+
+Nous pouvons maintenant exécuter son code jusqu'au prochain `yield`, en nous
+servant de la fonction standard `next()` :
+
+```python
 >>> next(task)
 Tic
 >>> next(task)
@@ -41,127 +54,25 @@ StopIteration: Boum!
 
 Lorsque la tâche est terminée, une exception `StopIteration` est levée.
 Celle-ci contient la valeur de retour de la coroutine. Jusqu'ici, rien de bien
-sorcier. Dès lors, on peut imaginer créer une petite boucle événementielle pour
-exécuter cette coroutine. Il suffit en fait de la considérer comme une file de
-tâches à exécuter jusqu'à épuisement.
-
-En Python, l'objet le plus pratique pour modéliser une *file d'attente* est la
-classe standard `collections.deque` (*double-ended queue*). Cette classe
-possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :
-
-* `appendleft()` pour ajouter un élément au tout début de la liste,
-* `popleft()` pour retirer (et retourner) le premier élément de la liste.
-
-Ainsi, puisqu'il s'agit d'une file d'attente, il faut ajouter les éléments à
-une extrémité de la file (`append()`), et consommer ceux de l'autre extrémité
-(`popleft()`). On pourrait arguer qu'il est possible d'ajouter des éléments
-n'importe où dans une liste avec la méthode `insert()`, mais la classe `deque`
-est vraiment *faite pour* créer des files et des piles : ses opérations aux
-extrémités sont bien plus efficaces que la méthode `insert()`.
+sorcier. Dès lors, on peut imaginer créer une petite boucle pour exécuter cette
+coroutine jusqu'à épuisement :
 
 ```python
->>> from collections import deque
->>> events_loop = deque()
-```
-
-Dotons-nous de fonctions utilitaires pour ajouter des tâches à la boucle
-événementielle et pour exécuter cette dernière :
-
-* `schedule(loop, task)` : programmer l'exécution d'une tâche ;
-* `run_until_empty(loop)`: exécuter la boucle événementielle jusqu'à épuisement ;
-* `run_once(loop, task)`: raccourcis pour exécuter une coroutine.
-
-```python
-def schedule(loop, task):
-    loop.append(task)
-
-def run_until_empty(loop):
-    while loop:
-        task = loop.popleft()
-        try:
-            # On fait avancer la coroutine jusqu'au prochain "yield"
-            next(task)
-            # Si celle-ci n'a pas fini son travail,
-            # on la programme pour qu'elle le reprenne plus tard.
-            schedule(loop, task)
-        except StopIteration as res:
-            # La coroutine a terminé son exécution.
-            # On affiche sa valeur de retour.
-            print(
-                "Task {!r} returned {!r}".format(task.__name__, res.value)
-            )
-
-def run_once(loop, task):
-    schedule(loop, task)
-    run_until_empty(loop)
-```
-
-Nous pouvons maintenant nous servir de la boucle événementielle pour exécuter
-la tâche `tic_tac`:
-
-```python
->>> run_once(events_loop, tic_tac())
-Tic
-Tac
-Task 'tic_tac' returned 'Boum!'
-```
-
-Tout fonctionne comme prévu. Et si nous donnions deux coroutines différentes à
-exécuter à boucle événementielle ?
-
-```python
->>> def spam():
-...     print("spam")
-...     yield
-...     print("eggs")
-...     yield
-...     print("bacon")
-...     yield
-...     return 'spam'
+>>> task = tic_tac()
+>>> while True:
+...     try:
+...         next(task)
+...     except StopIteration as stop:
+...         print("valeur de retour:", repr(stop.value))
+...         break
 ...
->>> schedule(events_loop, tic_tac())
->>> schedule(events_loop, spam())
->>> run_until_empty(events_loop)
 Tic
-spam
 Tac
-eggs
-Task 'tic_tac' returned 'Boum!'
-bacon
-Task 'spam' returned 'spam'
+valeur de retour: 'Boum!'
 ```
 
-Voilà qui est intéressant : la sortie des deux coroutines est entremêlée !
-Cela signifie que les deux tâches ont été exécutées simultanément, de façon
-**concurrente**.
-
-Ce genre de boucle événementielle existe bien évidemment dans Python, c'est
-même exactement **le centre nerveux** du module `asyncio`. Regardez :
-
-```python3
->>> import asyncio
->>> loop = asyncio.get_event_loop()
->>> loop.run_until_complete(asyncio.wait([tic_tac(), spam()]))
-Tic
-spam
-Tac
-eggs
-bacon
-({Task(<tic_tac>)<result='Boum!'>, Task(<spam>)<result='spam'>}, set())
-```
-
-Dans tous les exemples qui suivent, nous allons nous attarder sur les
-différentes fonctionnalités qui font d'`asyncio` un puissant *framework* de
-programmation asynchrone. Nous reprogrammerons certaines de ces fonctionnalités
-pour mieux les comprendre au début, puis nous glisserons progressivement vers
-les objets de plus haut niveau que nous propose ce *framework* pour nous
-concentrer sur des applications **pratiques** de la vie réelle.
-
-Commençons par modéliser un peu mieux notre système. Jusqu'ici, il se
-compose uniquement de deux types d'objets : une **boucle** (`Loop`) qui exécute
-des **tâches** (`Task`) de façon concurrente.
-
-Définissons notre classe `Task` en premier :
+Afin de nous affranchir de la sémantique des itérateurs de Python, créons une
+class `Task` qui nous permettra de manipuler nos coroutines plus aisément :
 
 ```python
 STATUS_NEW = 'NEW'
@@ -174,21 +85,25 @@ class Task:
         self.coro = coro  # Coroutine à exécuter
         self.name = coro.__name__
         self.status = STATUS_NEW  # Statut de la tâche
-        self.msg = None  # Message à envoyer à la tâche
         self.return_value = None  # Valeur de retour de la coroutine
         self.error_value = None  # Exception levée par la coroutine
 
     # Exécute la tâche jusqu'à la prochaine pause
     def run(self):
         try:
+            # On passe la tâche à l'état RUNNING et on l'exécute jusqu'à
+            # la prochaine suspension de la coroutine.
             self.status = STATUS_RUNNING
-            # Cette ligne revient à faire la même chose que next(self.coro).
-            # Nous y reviendrons dans le prochain exemple.
-            return self.coro.send(self.msg)
+            next(self.coro)
         except StopIteration as err:
+            # Si la coroutine se termine, la tâche passe à l'état FINISHED
+            # et on récupère sa valeur de retour.
             self.status = STATUS_FINISHED
             self.return_value = err.value
         except Exception as err:
+            # Si une autre exception est levée durant l'exécution de la
+            # coroutine, la tâche passe à l'état ERROR, et on récupère
+            # l'exception pour laisser l'utilisateur la traiter.
             self.status = STATUS_ERROR
             self.error_value = err
 
@@ -196,32 +111,87 @@ class Task:
         return self.status in {STATUS_FINISHED, STATUS_ERROR}
 
     def __repr__(self):
-        return "<Task '{name}' [{status}] ({res!r})>".format(
-            name=self.name,
-            status=self.status,
-            res=(self.return_value or self.error_value)
-        )
+        result = ''
+        if self.is_done():
+            result = " ({!r})".format(self.return_value or self.error_value)
+
+        return "<Task '{}' [{}]{}>".format(self.name, self.status, result)
+
 ```
 
-Cette classe a une utilisation très simple. On lui passe une coroutine, et on
-se contente de l'appeler via sa méthode `run()` :
+Son fonctionnement est plutôt simple. Réimplémentons notre boucle en nous
+servant de cette classe :
 
 ```python
 >>> task = Task(tic_tac())
 >>> task
-<Task 'tic_tac' [NEW] (None)>
+<Task 'tic_tac' [NEW]>
 >>> while not task.is_done():
 ...     task.run()
 ...     print(task)
 ...
 Tic
-<Task 'tic_tac' [RUNNING] (None)>
+<Task 'tic_tac' [RUNNING]>
 Tac
-<Task 'tic_tac' [RUNNING] (None)>
-<Task 'tic_tac' [FINISHED] ('Boum!')>
+<Task 'tic_tac' [RUNNING]>
+<Task 'tic_tac' [FINISHED] ('Boom!')>
+>>> task.return_value
+'Boom!'
 ```
 
-Reste la boucle événementielle `Loop` :
+Bien. Nous avons une classe qui nous permet de manipuler des tâches en cours
+d'exécution, ces tâches étant implémentées sous la forme de coroutines. Il ne
+nous reste plus qu'à trouver un moyen d'exécuter plusieurs coroutines de façon
+**concurrente**, c'est-à-dire en parallèle les unes des autres.
+
+Pour cela, il suffit de construire une *file d'attente* de tâches à exécuter.
+En Python, l'objet le plus pratique pour modéliser une file d'attente est la
+classe standard `collections.deque` (*double-ended queue*). Cette classe
+possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :
+
+* `appendleft()` pour ajouter un élément au tout début de la liste,
+* `popleft()` pour retirer (et retourner) le premier élément de la liste.
+
+Ainsi, il suffit ajouter les éléments à une extrémité de la file (`append()`),
+et consommer ceux de l'autre extrémité (`popleft()`). On pourrait arguer qu'il
+est possible d'ajouter des éléments n'importe où dans une liste avec la méthode
+`insert()`, mais la classe `deque` est vraiment *faite pour* créer des files et
+des piles : ses opérations aux extrémités sont bien plus efficaces que la
+méthode `insert()`.
+
+Essayons d'exécuter en parallèle deux instances de notre coroutine `tic_tac` :
+
+```python
+>>> from collections import deque
+>>> running_tasks = deque()
+>>> running_tasks.append(Task(tic_tac()))
+>>> running_tasks.append(Task(tic_tac()))
+>>> while running_tasks:
+...     # On récupère une tâche en attente et on l'exécute
+...     task = running_tasks.popleft()
+...     task.run()
+...     if task.is_done():
+...         # Si la tâche est terminée, on l'affiche
+...         print(task)
+...     else:
+...         # La tâche n'est pas finie, on la replace au bout
+...         # de la file d'attente
+...         running_tasks.append(task)
+...
+Tic
+Tic
+Tac
+Tac
+<Task 'tic_tac' [FINISHED] ('Boom!')>
+<Task 'tic_tac' [FINISHED] ('Boom!')>
+```
+
+Voilà qui est intéressant : la sortie des deux coroutines est entremêlée !
+Cela signifie que les deux tâches ont été exécutées simultanément, de façon
+**concurrente**.
+
+Nous avons tout ce qu'il nous faut pour modéliser notre boucle événementielle
+dans la classe `Loop` suivante :
 
 ```python
 from collections import deque
@@ -230,37 +200,97 @@ class Loop:
     def __init__(self):
         self._running = deque()
 
-    def run_once(self):
+    def _loop(self):
+        task = self._running.popleft()
+        task.run()
+        if task.is_done():
+            print(task)
+            return
+        self.schedule(task)
+
+    def run_until_empty(self):
         while self._running:
-            task = self._running.popleft()
-            task.run()
-
-            if task.is_done():
-                print(task)
-                continue
-
-            self.schedule(task)
+            self._loop()
 
     def schedule(self, task):
         if not isinstance(task, Task):
             task = Task(task)
         self._running.append(task)
+        return task
 ```
 
-Rien que nous n'ayons pas déjà vu :
+Vérifions :
 
 ```python
->>> loop = Loop()
->>> loop.schedule(tic_tac())
->>> loop.schedule(spam())
->>> loop.run_once()
+>>> def spam():
+...     print("Spam")
+...     yield
+...     print("Eggs")
+...     yield
+...     print("Bacon")
+...     yield
+...     return "SPAM!"
+...
+>>> event_loop = Loop()
+>>> event_loop.schedule(tic_tac())
+>>> event_loop.schedule(spam())
+>>> event_loop.run_until_empty()
 Tic
-spam
+Spam
 Tac
-eggs
-<Task 'tic_tac' [FINISHED] ('Boum!')>
-bacon
-<Task 'spam' [FINISHED] ('spam')>
+Eggs
+<Task 'tic_tac' [FINISHED] ('Boom!')>
+Bacon
+<Task 'spam' [FINISHED] ('SPAM!')>
 ```
 
-Voilà, nous pouvons commencer à nous amuser avec nos coroutines. :)
+Tout fonctionne parfaitement. Dotons tout de même notre classe `Loop` d'une
+dernière méthode pour exécuter la boucle jusqu'à épuisement d'une coroutine en
+particulier :
+
+```python
+class Loop:
+    # ...
+    def run_until_complete(self, task):
+        task = self.schedule(task)
+        while not task.is_done():
+            self._loop()
+```
+
+Testons-la :
+
+```python
+>>> event_loop = Loop()
+>>> event_loop.run_until_complete(tic_tac())
+Tic
+Tac
+<Task 'tic_tac' [FINISHED] ('Boom!')>
+```
+
+Pas de surprise.
+
+Toute la programmation asynchrone repose sur ce genre de boucle événementielle,
+qui sert, en fait, d'*ordonnanceur* aux tâches en cours d'exécution. Pour vous
+en convaincre, regardez cet bout de code qui utilise `asyncio` :
+
+```python
+>>> import asyncio
+>>> loop = asyncio.get_event_loop()
+>>> loop.run_until_complete(tic_tac())
+Tic
+Tac
+'Boom!'
+>>> loop.run_until_complete(asyncio.wait([tic_tac(), spam()]))
+Spam
+Tic
+Eggs
+Tac
+Bacon
+({Task(<tic_tac>)<result='Boom!'>, Task(<spam>)<result='SPAM!'>}, set())
+```
+
+Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction
+`asyncio.wait` : il s'agit simplement d'une coroutine qui sert à lancer
+plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de
+retourner. *Nous la reprogrammerons nous-mêmes très bientôt*. ;)
+

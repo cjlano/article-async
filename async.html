@@ -42,19 +42,19 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <p>En un mot comme en cent, un programme qui fonctionne de façon <em>asychrone</em>, c'est un programme qui évite au maximum de passer du temps à <em>attendre sans rien faire</em>, et qui s'arrange pour <em>s'occuper autant que possible pendant qu'il attend</em>. Cette façon d'optimiser le temps d'attente est tout à fait naturelle pour nous. Par exemple, on peut s'en rendre compte en observant le travail d'un serveur qui monte votre commande dans un <em>fast food</em>.</p>
 <p>De façon synchrone :</p>
 <ul>
-<li>Préparer le hamburger:
+<li>Préparer le hamburger :
 <ul>
 <li>Demander le hamburger en cuisine.</li>
 <li>Attendre le hamburger (1 minute).</li>
 <li>Récupérer le hamburger et le poser sur le plateau.</li>
 </ul></li>
-<li>Préparer les frites:
+<li>Préparer les frites :
 <ul>
 <li>Mettre des frites à chauffer.</li>
 <li>Attendre que les frites soient cuites (2 minutes).</li>
 <li>Récupérer des frites et les poser sur le plateau.</li>
 </ul></li>
-<li>Préparer la boisson:
+<li>Préparer la boisson :
 <ul>
 <li>Placer un gobelet dans la machine à soda.</li>
 <li>Remplir le gobelet (30 secondes).</li>
@@ -68,8 +68,8 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <li>Mettre les frites à chauffer.</li>
 <li>Placer un gobelet dans la machine à soda et le mettre à remplir.</li>
 <li>Après 30 secondes: Récupérer le gobelet et le poser sur le plateau.</li>
-<li>Après 1 minute: Récupérer le hamburger et le poser sur le plateau.</li>
-<li>Après 2 minutes: Récupérer les frites et les poser sur le plateau.</li>
+<li>Après 1 minute : Récupérer le hamburger et le poser sur le plateau.</li>
+<li>Après 2 minutes : Récupérer les frites et les poser sur le plateau.</li>
 </ul>
 <p>En travaillant de façon asynchrone, notre employé de <em>fast food</em> monte maintenant votre commande en 2 minutes. Mais ça ne s'arrête pas là !</p>
 <ul>
@@ -77,14 +77,14 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <li>Demander le burger pour <code>A</code> en cuisine</li>
 <li>Mettre les frites à chauffer.</li>
 <li>Placer un gobelet dans la machine à soda pour <code>A</code>.</li>
-<li>Après 30 secondes: Récupérer le gobelet de <code>A</code> et le poser sur son plateau</li>
+<li>Après 30 secondes : Récupérer le gobelet de <code>A</code> et le poser sur son plateau</li>
 <li><strong>Une nouvelle commande <code>B</code> est prise et confiée à l'employé</strong></li>
 <li>Demander le burger pour <code>B</code> en cuisine</li>
 <li>Placer un gobelet dans la machine à soda pour <code>B</code>.</li>
-<li>Après 1 minute: Le burger de <code>A</code> est prêt, le poser sur son plateau.</li>
+<li>Après 1 minute : Le burger de <code>A</code> est prêt, le poser sur son plateau.</li>
 <li>La boisson de <code>B</code> est remplie, la poser sur son plateau.</li>
-<li>Après 1 minute 40: Le burger de <code>B</code> est prêt, le poser sur son plateau.</li>
-<li>Après 2 minutes: Les frites sont prêtes, servir <code>A</code> et <code>B</code></li>
+<li>Après 1 minute 40 : Le burger de <code>B</code> est prêt, le poser sur son plateau.</li>
+<li>Après 2 minutes : Les frites sont prêtes, servir <code>A</code> et <code>B</code></li>
 </ul>
 <p>Toujours en 2 minutes, l'employé asynchrone vient cette fois de servir 2 clients. Si vous vous mettez à la place du client <code>B</code> qui aurait dû attendre que l'employé finisse de monter la commande de <code>A</code> avant de s'occuper de la sienne dans un schéma synchrone, celui-ci a été servi en 1 minute 30 au lieu d'attendre 6 minutes 30.</p>
 <p>Pensez-y la prochaine fois que vous irez manger dans un fast-food, et observez les serveurs. Leur boulot vous semblera d'un coup beaucoup plus compliqué qu'il n'y paraît !</p>
@@ -99,9 +99,13 @@ code > span.er { color: #ff0000; font-weight: bold; }
     <span class="dt">print</span>(<span class="st">&quot;Tac&quot;</span>)
     <span class="kw">yield</span>
     <span class="kw">return</span> <span class="st">&quot;Boum!&quot;</span></code></pre>
-<p>Cette fonction, puisqu'elle utilise le mot-clé <code>yield</code>, définit une <em>coroutine</em><a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>. Si on l'invoque, la fonction <code>tic_tac</code> retourne une tâche prête à être exécutée. Pour faire avancer la tâche jusqu'au prochain <code>yield</code>, il suffit d'itérer dessus au moyen de la fonction standard <code>next()</code> :</p>
+<p>Cette fonction, puisqu'elle utilise le mot-clé <code>yield</code>, définit une <em>coroutine</em><a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>. Si on l'invoque, la fonction <code>tic_tac</code> retourne une tâche prête à être exécutée, mais n'exécute pas les instructions qu'elle contient.</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; task = tic_tac()
-&gt;&gt;&gt; <span class="dt">next</span>(task)
+&gt;&gt;&gt; task
+&lt;generator <span class="dt">object</span> tic_tac at <span class="bn">0x7fe157023280</span>&gt;</code></pre>
+<p>En termes de vocabulaire, on dira que notre fonction <code>tic_tac</code> est une <em>fonction coroutine</em>, c'est-à-dire une fonction qui <strong>construit une coroutine</strong>. La coroutine est contenue ici dans la variable <code>task</code>.</p>
+<p>Nous pouvons maintenant exécuter son code jusqu'au prochain <code>yield</code>, en nous servant de la fonction standard <code>next()</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="dt">next</span>(task)
 Tic
 &gt;&gt;&gt; <span class="dt">next</span>(task)
 Tac
@@ -109,82 +113,19 @@ Tac
 Traceback (most recent call last):
   File <span class="st">&quot;&lt;stdin&gt;&quot;</span>, line <span class="dv">1</span>, in &lt;module&gt;
 <span class="ot">StopIteration</span>: Boum!</code></pre>
-<p>Lorsque la tâche est terminée, une exception <code>StopIteration</code> est levée. Celle-ci contient la valeur de retour de la coroutine. Jusqu'ici, rien de bien sorcier. Dès lors, on peut imaginer créer une petite boucle événementielle pour exécuter cette coroutine. Il suffit en fait de la considérer comme une file de tâches à exécuter jusqu'à épuisement.</p>
-<p>En Python, l'objet le plus pratique pour modéliser une <em>file d'attente</em> est la classe standard <code>collections.deque</code> (<em>double-ended queue</em>). Cette classe possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :</p>
-<ul>
-<li><code>appendleft()</code> pour ajouter un élément au tout début de la liste,</li>
-<li><code>popleft()</code> pour retirer (et retourner) le premier élément de la liste.</li>
-</ul>
-<p>Ainsi, puisqu'il s'agit d'une file d'attente, il faut ajouter les éléments à une extrémité de la file (<code>append()</code>), et consommer ceux de l'autre extrémité (<code>popleft()</code>). On pourrait arguer qu'il est possible d'ajouter des éléments n'importe où dans une liste avec la méthode <code>insert()</code>, mais la classe <code>deque</code> est vraiment <em>faite pour</em> créer des files et des piles : ses opérations aux extrémités sont bien plus efficaces que la méthode <code>insert()</code>.</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="ch">from</span> collections <span class="ch">import</span> deque
-&gt;&gt;&gt; events_loop = deque()</code></pre>
-<p>Dotons-nous de fonctions utilitaires pour ajouter des tâches à la boucle événementielle et pour exécuter cette dernière :</p>
-<ul>
-<li><code>schedule(loop, task)</code> : programmer l'exécution d'une tâche ;</li>
-<li><code>run_until_empty(loop)</code>: exécuter la boucle événementielle jusqu'à épuisement ;</li>
-<li><code>run_once(loop, task)</code>: raccourcis pour exécuter une coroutine.</li>
-</ul>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> schedule(loop, task):
-    loop.append(task)
-
-<span class="kw">def</span> run_until_empty(loop):
-    <span class="kw">while</span> loop:
-        task = loop.popleft()
-        <span class="kw">try</span>:
-            <span class="co"># On fait avancer la coroutine jusqu&#39;au prochain &quot;yield&quot;</span>
-            <span class="dt">next</span>(task)
-            <span class="co"># Si celle-ci n&#39;a pas fini son travail,</span>
-            <span class="co"># on la programme pour qu&#39;elle le reprenne plus tard.</span>
-            schedule(loop, task)
-        <span class="kw">except</span> <span class="ot">StopIteration</span> <span class="ch">as</span> res:
-            <span class="co"># La coroutine a terminé son exécution.</span>
-            <span class="co"># On affiche sa valeur de retour.</span>
-            <span class="dt">print</span>(
-                <span class="st">&quot;Task {!r} returned {!r}&quot;</span>.<span class="dt">format</span>(task.<span class="ot">__name__</span>, res.value)
-            )
-
-<span class="kw">def</span> run_once(loop, task):
-    schedule(loop, task)
-    run_until_empty(loop)</code></pre>
-<p>Nous pouvons maintenant nous servir de la boucle événementielle pour exécuter la tâche <code>tic_tac</code>:</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; run_once(events_loop, tic_tac())
-Tic
-Tac
-Task <span class="st">&#39;tic_tac&#39;</span> returned <span class="st">&#39;Boum!&#39;</span></code></pre>
-<p>Tout fonctionne comme prévu. Et si nous donnions deux coroutines différentes à exécuter à boucle événementielle ?</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> spam():
-...     <span class="dt">print</span>(<span class="st">&quot;spam&quot;</span>)
-...     <span class="kw">yield</span>
-...     <span class="dt">print</span>(<span class="st">&quot;eggs&quot;</span>)
-...     <span class="kw">yield</span>
-...     <span class="dt">print</span>(<span class="st">&quot;bacon&quot;</span>)
-...     <span class="kw">yield</span>
-...     <span class="kw">return</span> <span class="st">&#39;spam&#39;</span>
+<p>Lorsque la tâche est terminée, une exception <code>StopIteration</code> est levée. Celle-ci contient la valeur de retour de la coroutine. Jusqu'ici, rien de bien sorcier. Dès lors, on peut imaginer créer une petite boucle pour exécuter cette coroutine jusqu'à épuisement :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; task = tic_tac()
+&gt;&gt;&gt; <span class="kw">while</span> <span class="ot">True</span>:
+...     <span class="kw">try</span>:
+...         <span class="dt">next</span>(task)
+...     <span class="kw">except</span> <span class="ot">StopIteration</span> <span class="ch">as</span> stop:
+...         <span class="dt">print</span>(<span class="st">&quot;valeur de retour:&quot;</span>, <span class="dt">repr</span>(stop.value))
+...         <span class="kw">break</span>
 ...
-&gt;&gt;&gt; schedule(events_loop, tic_tac())
-&gt;&gt;&gt; schedule(events_loop, spam())
-&gt;&gt;&gt; run_until_empty(events_loop)
 Tic
-spam
 Tac
-eggs
-Task <span class="st">&#39;tic_tac&#39;</span> returned <span class="st">&#39;Boum!&#39;</span>
-bacon
-Task <span class="st">&#39;spam&#39;</span> returned <span class="st">&#39;spam&#39;</span></code></pre>
-<p>Voilà qui est intéressant : la sortie des deux coroutines est entremêlée ! Cela signifie que les deux tâches ont été exécutées simultanément, de façon <strong>concurrente</strong>.</p>
-<p>Ce genre de boucle événementielle existe bien évidemment dans Python, c'est même exactement <strong>le centre nerveux</strong> du module <code>asyncio</code>. Regardez :</p>
-<pre class="python3"><code>&gt;&gt;&gt; import asyncio
-&gt;&gt;&gt; loop = asyncio.get_event_loop()
-&gt;&gt;&gt; loop.run_until_complete(asyncio.wait([tic_tac(), spam()]))
-Tic
-spam
-Tac
-eggs
-bacon
-({Task(&lt;tic_tac&gt;)&lt;result=&#39;Boum!&#39;&gt;, Task(&lt;spam&gt;)&lt;result=&#39;spam&#39;&gt;}, set())</code></pre>
-<p>Dans tous les exemples qui suivent, nous allons nous attarder sur les différentes fonctionnalités qui font d'<code>asyncio</code> un puissant <em>framework</em> de programmation asynchrone. Nous reprogrammerons certaines de ces fonctionnalités pour mieux les comprendre au début, puis nous glisserons progressivement vers les objets de plus haut niveau que nous propose ce <em>framework</em> pour nous concentrer sur des applications <strong>pratiques</strong> de la vie réelle.</p>
-<p>Commençons par modéliser un peu mieux notre système. Jusqu'ici, il se compose uniquement de deux types d'objets : une <strong>boucle</strong> (<code>Loop</code>) qui exécute des <strong>tâches</strong> (<code>Task</code>) de façon concurrente.</p>
-<p>Définissons notre classe <code>Task</code> en premier :</p>
+valeur de retour: <span class="st">&#39;Boum!&#39;</span></code></pre>
+<p>Afin de nous affranchir de la sémantique des itérateurs de Python, créons une class <code>Task</code> qui nous permettra de manipuler nos coroutines plus aisément :</p>
 <pre class="sourceCode python"><code class="sourceCode python">STATUS_NEW = <span class="st">&#39;NEW&#39;</span>
 STATUS_RUNNING = <span class="st">&#39;RUNNING&#39;</span>
 STATUS_FINISHED = <span class="st">&#39;FINISHED&#39;</span>
@@ -195,21 +136,25 @@ STATUS_ERROR = <span class="st">&#39;ERROR&#39;</span>
         <span class="ot">self</span>.coro = coro  <span class="co"># Coroutine à exécuter</span>
         <span class="ot">self</span>.name = coro.<span class="ot">__name__</span>
         <span class="ot">self</span>.status = STATUS_NEW  <span class="co"># Statut de la tâche</span>
-        <span class="ot">self</span>.msg = <span class="ot">None</span>  <span class="co"># Message à envoyer à la tâche</span>
         <span class="ot">self</span>.return_value = <span class="ot">None</span>  <span class="co"># Valeur de retour de la coroutine</span>
         <span class="ot">self</span>.error_value = <span class="ot">None</span>  <span class="co"># Exception levée par la coroutine</span>
 
     <span class="co"># Exécute la tâche jusqu&#39;à la prochaine pause</span>
     <span class="kw">def</span> run(<span class="ot">self</span>):
         <span class="kw">try</span>:
+            <span class="co"># On passe la tâche à l&#39;état RUNNING et on l&#39;exécute jusqu&#39;à</span>
+            <span class="co"># la prochaine suspension de la coroutine.</span>
             <span class="ot">self</span>.status = STATUS_RUNNING
-            <span class="co"># Cette ligne revient à faire la même chose que next(self.coro).</span>
-            <span class="co"># Nous y reviendrons dans le prochain exemple.</span>
-            <span class="kw">return</span> <span class="ot">self</span>.coro.send(<span class="ot">self</span>.msg)
+            <span class="dt">next</span>(<span class="ot">self</span>.coro)
         <span class="kw">except</span> <span class="ot">StopIteration</span> <span class="ch">as</span> err:
+            <span class="co"># Si la coroutine se termine, la tâche passe à l&#39;état FINISHED</span>
+            <span class="co"># et on récupère sa valeur de retour.</span>
             <span class="ot">self</span>.status = STATUS_FINISHED
             <span class="ot">self</span>.return_value = err.value
         <span class="kw">except</span> <span class="ot">Exception</span> <span class="ch">as</span> err:
+            <span class="co"># Si une autre exception est levée durant l&#39;exécution de la</span>
+            <span class="co"># coroutine, la tâche passe à l&#39;état ERROR, et on récupère</span>
+            <span class="co"># l&#39;exception pour laisser l&#39;utilisateur la traiter.</span>
             <span class="ot">self</span>.status = STATUS_ERROR
             <span class="ot">self</span>.error_value = err
 
@@ -217,71 +162,143 @@ STATUS_ERROR = <span class="st">&#39;ERROR&#39;</span>
         <span class="kw">return</span> <span class="ot">self</span>.status in {STATUS_FINISHED, STATUS_ERROR}
 
     <span class="kw">def</span> <span class="ot">__repr__</span>(<span class="ot">self</span>):
-        <span class="kw">return</span> <span class="st">&quot;&lt;Task &#39;</span><span class="ot">{name}</span><span class="st">&#39; [</span><span class="ot">{status}</span><span class="st">] (</span><span class="ot">{res!r}</span><span class="st">)&gt;&quot;</span>.<span class="dt">format</span>(
-            name=<span class="ot">self</span>.name,
-            status=<span class="ot">self</span>.status,
-            res=(<span class="ot">self</span>.return_value or <span class="ot">self</span>.error_value)
-        )</code></pre>
-<p>Cette classe a une utilisation très simple. On lui passe une coroutine, et on se contente de l'appeler via sa méthode <code>run()</code> :</p>
+        result = <span class="st">&#39;&#39;</span>
+        <span class="kw">if</span> <span class="ot">self</span>.is_done():
+            result = <span class="st">&quot; ({!r})&quot;</span>.<span class="dt">format</span>(<span class="ot">self</span>.return_value or <span class="ot">self</span>.error_value)
+
+        <span class="kw">return</span> <span class="st">&quot;&lt;Task &#39;{}&#39; [{}]{}&gt;&quot;</span>.<span class="dt">format</span>(<span class="ot">self</span>.name, <span class="ot">self</span>.status, result)</code></pre>
+<p>Son fonctionnement est plutôt simple. Réimplémentons notre boucle en nous servant de cette classe :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; task = Task(tic_tac())
 &gt;&gt;&gt; task
-&lt;Task <span class="st">&#39;tic_tac&#39;</span> [NEW] (<span class="ot">None</span>)&gt;
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [NEW]&gt;
 &gt;&gt;&gt; <span class="kw">while</span> not task.is_done():
 ...     task.run()
 ...     <span class="dt">print</span>(task)
 ...
 Tic
-&lt;Task <span class="st">&#39;tic_tac&#39;</span> [RUNNING] (<span class="ot">None</span>)&gt;
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [RUNNING]&gt;
 Tac
-&lt;Task <span class="st">&#39;tic_tac&#39;</span> [RUNNING] (<span class="ot">None</span>)&gt;
-&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boum!&#39;</span>)&gt;</code></pre>
-<p>Reste la boucle événementielle <code>Loop</code> :</p>
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [RUNNING]&gt;
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
+&gt;&gt;&gt; task.return_value
+<span class="co">&#39;Boom!&#39;</span></code></pre>
+<p>Bien. Nous avons une classe qui nous permet de manipuler des tâches en cours d'exécution, ces tâches étant implémentées sous la forme de coroutines. Il ne nous reste plus qu'à trouver un moyen d'exécuter plusieurs coroutines de façon <strong>concurrente</strong>, c'est-à-dire en parallèle les unes des autres.</p>
+<p>Pour cela, il suffit de construire une <em>file d'attente</em> de tâches à exécuter. En Python, l'objet le plus pratique pour modéliser une file d'attente est la classe standard <code>collections.deque</code> (<em>double-ended queue</em>). Cette classe possède les mêmes méthodes que les listes, auxquelles viennent s'ajouter :</p>
+<ul>
+<li><code>appendleft()</code> pour ajouter un élément au tout début de la liste,</li>
+<li><code>popleft()</code> pour retirer (et retourner) le premier élément de la liste.</li>
+</ul>
+<p>Ainsi, il suffit ajouter les éléments à une extrémité de la file (<code>append()</code>), et consommer ceux de l'autre extrémité (<code>popleft()</code>). On pourrait arguer qu'il est possible d'ajouter des éléments n'importe où dans une liste avec la méthode <code>insert()</code>, mais la classe <code>deque</code> est vraiment <em>faite pour</em> créer des files et des piles : ses opérations aux extrémités sont bien plus efficaces que la méthode <code>insert()</code>.</p>
+<p>Essayons d'exécuter en parallèle deux instances de notre coroutine <code>tic_tac</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="ch">from</span> collections <span class="ch">import</span> deque
+&gt;&gt;&gt; running_tasks = deque()
+&gt;&gt;&gt; running_tasks.append(Task(tic_tac()))
+&gt;&gt;&gt; running_tasks.append(Task(tic_tac()))
+&gt;&gt;&gt; <span class="kw">while</span> running_tasks:
+...     <span class="co"># On récupère une tâche en attente et on l&#39;exécute</span>
+...     task = running_tasks.popleft()
+...     task.run()
+...     <span class="kw">if</span> task.is_done():
+...         <span class="co"># Si la tâche est terminée, on l&#39;affiche</span>
+...         <span class="dt">print</span>(task)
+...     <span class="kw">else</span>:
+...         <span class="co"># La tâche n&#39;est pas finie, on la replace au bout</span>
+...         <span class="co"># de la file d&#39;attente</span>
+...         running_tasks.append(task)
+...
+Tic
+Tic
+Tac
+Tac
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;</code></pre>
+<p>Voilà qui est intéressant : la sortie des deux coroutines est entremêlée ! Cela signifie que les deux tâches ont été exécutées simultanément, de façon <strong>concurrente</strong>.</p>
+<p>Nous avons tout ce qu'il nous faut pour modéliser notre boucle événementielle dans la classe <code>Loop</code> suivante :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> collections <span class="ch">import</span> deque
 
 <span class="kw">class</span> Loop:
     <span class="kw">def</span> <span class="ot">__init__</span>(<span class="ot">self</span>):
         <span class="ot">self</span>._running = deque()
 
-    <span class="kw">def</span> run_once(<span class="ot">self</span>):
+    <span class="kw">def</span> _loop(<span class="ot">self</span>):
+        task = <span class="ot">self</span>._running.popleft()
+        task.run()
+        <span class="kw">if</span> task.is_done():
+            <span class="dt">print</span>(task)
+            <span class="kw">return</span>
+        <span class="ot">self</span>.schedule(task)
+
+    <span class="kw">def</span> run_until_empty(<span class="ot">self</span>):
         <span class="kw">while</span> <span class="ot">self</span>._running:
-            task = <span class="ot">self</span>._running.popleft()
-            task.run()
-
-            <span class="kw">if</span> task.is_done():
-                <span class="dt">print</span>(task)
-                <span class="kw">continue</span>
-
-            <span class="ot">self</span>.schedule(task)
+            <span class="ot">self</span>._loop()
 
     <span class="kw">def</span> schedule(<span class="ot">self</span>, task):
         <span class="kw">if</span> not <span class="dt">isinstance</span>(task, Task):
             task = Task(task)
-        <span class="ot">self</span>._running.append(task)</code></pre>
-<p>Rien que nous n'ayons pas déjà vu :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = Loop()
-&gt;&gt;&gt; loop.schedule(tic_tac())
-&gt;&gt;&gt; loop.schedule(spam())
-&gt;&gt;&gt; loop.run_once()
+        <span class="ot">self</span>._running.append(task)
+        <span class="kw">return</span> task</code></pre>
+<p>Vérifions :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> spam():
+...     <span class="dt">print</span>(<span class="st">&quot;Spam&quot;</span>)
+...     <span class="kw">yield</span>
+...     <span class="dt">print</span>(<span class="st">&quot;Eggs&quot;</span>)
+...     <span class="kw">yield</span>
+...     <span class="dt">print</span>(<span class="st">&quot;Bacon&quot;</span>)
+...     <span class="kw">yield</span>
+...     <span class="kw">return</span> <span class="st">&quot;SPAM!&quot;</span>
+...
+&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.schedule(tic_tac())
+&gt;&gt;&gt; event_loop.schedule(spam())
+&gt;&gt;&gt; event_loop.run_until_empty()
 Tic
-spam
+Spam
 Tac
-eggs
-&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boum!&#39;</span>)&gt;
-bacon
-&lt;Task <span class="st">&#39;spam&#39;</span> [FINISHED] (<span class="st">&#39;spam&#39;</span>)&gt;</code></pre>
-<p>Voilà, nous pouvons commencer à nous amuser avec nos coroutines. :)</p>
+Eggs
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
+Bacon
+&lt;Task <span class="st">&#39;spam&#39;</span> [FINISHED] (<span class="st">&#39;SPAM!&#39;</span>)&gt;</code></pre>
+<p>Tout fonctionne parfaitement. Dotons tout de même notre classe <code>Loop</code> d'une dernière méthode pour exécuter la boucle jusqu'à épuisement d'une coroutine en particulier :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">class</span> Loop:
+    <span class="co"># ...</span>
+    <span class="kw">def</span> run_until_complete(<span class="ot">self</span>, task):
+        task = <span class="ot">self</span>.schedule(task)
+        <span class="kw">while</span> not task.is_done():
+            <span class="ot">self</span>._loop()</code></pre>
+<p>Testons-la :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.run_until_complete(tic_tac())
+Tic
+Tac
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;</code></pre>
+<p>Pas de surprise.</p>
+<p>Toute la programmation asynchrone repose sur ce genre de boucle événementielle, qui sert, en fait, d'<em>ordonnanceur</em> aux tâches en cours d'exécution. Pour vous en convaincre, regardez cet bout de code qui utilise <code>asyncio</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="ch">import</span> asyncio
+&gt;&gt;&gt; loop = asyncio.get_event_loop()
+&gt;&gt;&gt; loop.run_until_complete(tic_tac())
+Tic
+Tac
+<span class="co">&#39;Boom!&#39;</span>
+&gt;&gt;&gt; loop.run_until_complete(asyncio.wait([tic_tac(), spam()]))
+Spam
+Tic
+Eggs
+Tac
+Bacon
+({Task(&lt;tic_tac&gt;)&lt;result=<span class="st">&#39;Boom!&#39;</span>&gt;, Task(&lt;spam&gt;)&lt;result=<span class="st">&#39;SPAM!&#39;</span>&gt;}, <span class="dt">set</span>())</code></pre>
+<p>Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction <code>asyncio.wait</code> : il s'agit simplement d'une coroutine qui sert à lancer plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de retourner. <em>Nous la reprogrammerons nous-mêmes très bientôt</em>. ;)</p>
 <h1 id="exemple-n2-communiquer-avec-la-boucle-événementielle"><span class="header-section-number">3</span> Exemple n°2 : Communiquer avec la boucle événementielle</h1>
-<p>Jusqu'ici, vous vous êtes probablement aperçu que nos coroutines ne <code>yield</code>-aient aucune valeur. En effet, le simple fait qu'elles se suspendent suffit à les faire exécuter en concurrence. Néanmoins, nous avons vu dans un précédent article que ce mot-clé <code>yield</code> était en Python un véritable canal de communication entre la coroutine et le code qui l'exécute.</p>
+<p>Jusqu'ici, vous vous êtes probablement aperçu que nos coroutines ne <code>yield</code>-aient aucune valeur. En effet, le simple fait qu'elles se suspendent suffit à les faire exécuter en concurrence. Néanmoins, nous avons vu dans un <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">précédent article</a> que ce mot-clé <code>yield</code> était en Python un véritable canal de communication entre la coroutine et le code qui l'exécute.</p>
 <p>Ainsi, nous savons que nous pouvons faire communiquer la boucle avec les tâches qu'elle exécute. C'est d'ailleurs tout l'intérêt de la ligne suivante dans la classe <code>Task</code> :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">class</span> Task:
     <span class="kw">def</span> run(<span class="ot">self</span>):
         <span class="co"># ...</span>
         <span class="kw">return</span> <span class="ot">self</span>.coro.send(<span class="ot">self</span>.msg)</code></pre>
-<p>Mais à quoi cela pourrait-il bien servir ? Faisons, si vous le voulez bien un petit parallèle entre notre boucle événementielle et un système d'exploitation (OS).</p>
+<p>Mais à quoi cela pourrait-il bien servir ? Faisons, si vous le voulez bien, un petit parallèle entre notre boucle événementielle et un système d'exploitation (OS).</p>
 <p>Vous avez peut-être déjà lu ou entendu que l'OS est chargé d'exécuter des programmes sur l'ordinateur : à chaque instant il sait quel programme est en train de s'exécuter, il a d'ailleurs le pouvoir de les démarrer et de les interrompre, exactement comme notre boucle événementielle avec ses tâches.</p>
 <p>Parfois (enfin, plutôt souvent, même) un programme <code>A</code> a besoin que l'OS lui rende un service, par exemple pour lancer un autre programme <code>B</code>. Dans ce cas, le programme <code>A</code> va réaliser ce que l'on appelle un <em>appel système</em>, c'est-à-dire qu'il va <em>envoyer un message</em> à l'OS pour lui demander de bien vouloir lancer le nouveau programme <code>B</code>.</p>
 <p>Eh bien nous pourrions tout à fait transposer cette notion d'<em>appels système</em> à notre boucle événementielle. Et nous allons même nous servir de <code>yield</code> pour ce faire.</p>
-<p>Mettons nous en situation. Nous voulons que notre coroutine <code>example</code> lance une nouvelle tâche <code>subtask</code>.</p>
+<p>Mettons-nous en situation. Nous voulons que notre coroutine <code>example</code> lance une nouvelle tâche <code>subtask</code>.</p>
 <p>La façon la plus simple de nous y prendre serait d'appeler simplement la seconde tâche dans la première, au moyen de <code>yield from</code> :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> example():
     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
@@ -315,7 +332,7 @@ Retour dans <span class="st">&#39;example&#39;</span>
 <p>La tâche <code>subtask</code> a été exécutée complètement avant que <code>example</code> ne reprenne la main. C'est pas mal, ça nous montre comment appeler des <em>sous-coroutines</em>, mais comment faire si on avait voulu que la coroutine <code>subtask</code> s'exécute en parallèle de <code>example</code> ?</p>
 <p>Eh bien pour cela, il faut créer une tâche dédiée à la coroutine <code>subtask</code> dans la boucle événementielle. On peut donc imaginer envoyer un message à la boucle événementielle avec le mot-clé <code>yield</code>. Ce message serait composé de deux éléments :</p>
 <ul>
-<li>une <em>action</em> (l'ordre que l'on envoie à la boucle, ici &quot;exécuter&quot;)</li>
+<li>une <em>action</em> (l'ordre que l'on envoie à la boucle, ici « exécuter »)</li>
 <li>et une <em>valeur</em> (ici, la coroutine à exécuter dans une nouvelle tâche)</li>
 </ul>
 <p>Notre tâche <code>example</code> ressemblerait alors à ceci :</p>
@@ -327,7 +344,7 @@ Retour dans <span class="st">&#39;example&#39;</span>
     <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
         <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
         <span class="kw">yield</span></code></pre>
-<p>Ce message sera retourné à la boucle lorsquelle appellera <code>task.run()</code>. Il nous suffit de rajouter un peu de code à ce niveau pour le lire :</p>
+<p>Ce message sera retourné à la boucle lorsqu'elle appellera <code>task.run()</code>. Il nous suffit de rajouter un peu de code à ce niveau pour le lire :</p>
 <pre class="sourceCode python"><code class="sourceCode python">MSG_EXEC = <span class="st">&#39;EXEC&#39;</span>
 
 <span class="kw">class</span> Loop:
@@ -364,7 +381,7 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 (subtask)
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
 &lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
-<p>Nous pouvons donc créer notre premier &quot;<em>message système</em>&quot; pour masquer les détails d'implémentation à l'utilisateur:</p>
+<p>Nous pouvons donc créer notre premier « <em>message système</em> » pour masquer les détails d'implémentation à l'utilisateur:</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> launch(task):
     <span class="kw">if</span> not <span class="dt">isinstance</span>(task, Task):
         task = Task(task)
@@ -385,7 +402,7 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 <li><code>yield from launch(coroutine())</code> lance la coroutine dans une tâche séparée pour que celle-ci s'exécute <em>en concurrence</em> et reprend aussitôt l'exécution de la tâche en cours.</li>
 </ul>
 <p>La fonction équivalente à <code>launch()</code> dans <code>asyncio</code> est <code>asyncio.async()</code>. Notez toutefois que cette fonction est dépréciée (à cause de son nom) dans Python 3.5, qui recommande d'utiliser maintenant <code>asyncio.ensure_future()</code>.</p>
-<p>Ces deux fonctions retournent la tâche encapsulée dans un objet appelé &quot;futur&quot; (<code>Future</code>), correspondant grosso-modo à notre classe <code>Task</code>.</p>
+<p>Ces deux fonctions retournent la tâche encapsulée dans un objet appelé « futur » (<code>Future</code>), correspondant grosso-modo à notre classe <code>Task</code>.</p>
 <h1 id="exemple-n3-attendre-la-fin-de-lexécution-dune-ou-plusieurs-tâches"><span class="header-section-number">4</span> Exemple n°3 : Attendre la fin de l'exécution d'une ou plusieurs tâches</h1>
 <p>Dans l'exemple n°1, nous avons vu un bref appel à une fonction d'<code>asyncio</code> :</p>
 <pre class="python3"><code>&gt;&gt;&gt; import asyncio
@@ -400,7 +417,7 @@ bacon
 <p>La fonction intéressante de cet exemple est <code>asyncio.wait()</code>. Celle-ci permet d'attendre qu'une ou plusieurs tâches (lancées en parallèle) soient terminées. Sa valeur de retour se compose de deux ensembles (<code>set()</code>) :</p>
 <ul>
 <li>Le premier contient les tâches qui se sont terminées normalement ;</li>
-<li>Le second contient les tâches qui ne sont pas encore terminées, ont été annulées ou on quitté sur une erreur.</li>
+<li>Le second contient les tâches qui ne sont pas encore terminées, ont été annulées ou ont quitté sur une erreur.</li>
 </ul>
 <p>C'est cette fonction que nous allons implémenter maintenant.</p>
 <p>En fait, le plus difficile dans cette fonction est surtout sa partie cosmétique. Pour avoir un comportement souple, il faut gérer le cas où les tâches passées à cette fonction :</p>
@@ -434,7 +451,7 @@ bacon
             error.add(task)
 
     <span class="kw">return</span> finished, error</code></pre>
-<p>Nous pouvons vérifier que cette nouvelle fonction marche comme prévu avec les coroutines suivantes:</p>
+<p>Nous pouvons vérifier que cette nouvelle fonction marche comme prévu avec les coroutines suivantes.</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> repeat(msg, times):
 ...    <span class="dt">print</span>(<span class="st">&quot;lancement de la tâche&quot;</span>, <span class="dt">repr</span>(msg))
 ...     <span class="kw">for</span> _ in <span class="dt">range</span>(times):
@@ -1062,11 +1079,44 @@ Message reçu : Coucou!</code></pre>
 <li>La <em>fonction</em> <code>StreamWriter.write(data)</code> sert à envoyer des données (sous la forme d'un objet <code>bytes</code>) sur le flux. En fait, les données seront placées en attente dans un tampon (<em>buffer</em>) qui ne sera vidé qu'au prochain <code>yield</code>…</li>
 <li>Ce qui nous amène à la <em>coroutine</em> <code>StreamWriter.drain()</code>, qui sert à vider explicitement le tampon du <em>writer</em> pour envoyer les données sur le flux.</li>
 </ul>
-<p>C'est plutôt simple, non ? Ces objets reposent en fait sur une autre API, un petit peu plus bas niveau, d'<code>asyncio</code>, qui modélise des <em>protocoles</em> que l'on utilise par-dessus un <em>transport</em> (TCP, UDP…). Nous ne parlerons pas de cette API dans cet article, mais si vous êtes curieux, <a href="https://docs.python.org/3/library/asyncio-protocol.html">sa documentation</a> est plutôt claire et détaillée.</p>
+<p>C'est plutôt simple, non ? Ces objets reposent en fait sur une autre API, un petit peu plus bas niveau, d'<code>asyncio</code>, qui modélise des <em>protocoles</em> que l'on utilise par-dessus un <em>transport</em> (TCP, UDP…). Nous ne parlerons pas de cette API dans cet exemple, mais si vous êtes curieux, <a href="https://docs.python.org/3/library/asyncio-protocol.html">sa documentation</a> est plutôt claire et détaillée.</p>
+<p>Cette même interface peut d'ailleurs nous permettre de créer facilement un serveur, au moyen de la coroutine <code>asyncio.start_server()</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="co">#!/usr/bin/env python3</span>
+<span class="ch">import</span> asyncio
+
+<span class="ot">@asyncio.coroutine</span>
+<span class="kw">def</span> handle_echo(reader, writer):
+    data = <span class="kw">yield</span> <span class="ch">from</span> reader.read(<span class="dv">1024</span>)
+    <span class="dt">print</span>(<span class="st">&quot;Message reçu :&quot;</span>, data.decode())
+    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">1</span>)
+    writer.write(data)
+    <span class="kw">yield</span> <span class="ch">from</span> writer.drain()
+    writer.close()
+
+<span class="kw">def</span> echo_server():
+    loop = asyncio.get_event_loop()
+    server = loop.run_until_complete(
+        asyncio.start_server(handle_echo, <span class="st">&#39;localhost&#39;</span>, <span class="dv">1234</span>)
+    )
+
+    <span class="kw">try</span>:
+        loop.run_forever()
+    <span class="kw">except</span> <span class="ot">KeyboardInterrupt</span>:
+        <span class="kw">pass</span>
+
+    server.close()
+    loop.run_until_complete(server.wait_closed())
+    loop.close()
+
+<span class="kw">if</span> <span class="ot">__name__</span> == <span class="st">&#39;__main__&#39;</span>:
+    echo_server()</code></pre>
+<p>Ici, tout le code de notre serveur se trouve dans la coroutine <code>handle_echo</code>. Cette coroutine accepte un <code>StreamReader</code> et un <code>StreamWriter</code>, et ne retourne que lorsque l'échange avec un client est terminé.</p>
+<p>Dans la fonction <code>echo_server()</code> on commence par créer un serveur en passant cette coroutine à <code>asyncio.start_server()</code> dans la boucle événementielle, puis on demande à la boucle de tourner &quot;à l'infini&quot; (jusqu'à ce que le processus soit interrompu).</p>
+<p>Notez que nous aurions pu instancier le même service, mais sur des sockets Unix au lieu d'un flux TCP, simplement en utilisant la fonction <code>asyncio.start_unix_server()</code> à la place de <code>asyncio.start_server()</code> : la coroutine <code>handle_echo</code>, restera la même, et sera lancée dans une nouvelle tâche chaque fois qu'un client se connectera.</p>
 <section class="footnotes">
 <hr />
 <ol>
-<li id="fn1"><p>En toute rigueur il s'agit d'un <em>générateur</em>, mais comme nous avons pu l'observer dans un précédent article, les générateurs de Python sont implémentés comme de véritables coroutines.<a href="#fnref1">↩</a></p></li>
+<li id="fn1"><p>En toute rigueur il s'agit d'un <em>générateur</em>, mais comme nous avons pu l'observer dans un <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">précédent article</a>, les générateurs de Python sont implémentés comme de véritables coroutines.<a href="#fnref1">↩</a></p></li>
 <li id="fn2"><p>On peut par exemple lire un son sous Linux en <em>écrivant</em> des données dans un fichier spécial qui représente la carte son !<a href="#fnref2">↩</a></p></li>
 </ol>
 </section>
