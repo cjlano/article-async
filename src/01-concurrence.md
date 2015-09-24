@@ -72,7 +72,7 @@ valeur de retour: 'Boum!'
 ```
 
 Afin de nous affranchir de la sémantique des itérateurs de Python, créons une
-class `Task` qui nous permettra de manipuler nos coroutines plus aisément :
+classe `Task` qui nous permettra de manipuler nos coroutines plus aisément :
 
 ```python
 STATUS_NEW = 'NEW'
@@ -142,7 +142,9 @@ Tac
 Bien. Nous avons une classe qui nous permet de manipuler des tâches en cours
 d'exécution, ces tâches étant implémentées sous la forme de coroutines. Il ne
 nous reste plus qu'à trouver un moyen d'exécuter plusieurs coroutines de façon
-**concurrente**, c'est-à-dire en parallèle les unes des autres.
+**concurrente**, c'est-à-dire en parallèle les unes des autres. En effet, tout
+l'intérêt de la programmation asynchrone est d'être capable d'occuper le
+programme pendant qu'une tâche donnée est en attente d'un événement.
 
 Pour cela, il suffit de construire une *file d'attente* de tâches à exécuter.
 En Python, l'objet le plus pratique pour modéliser une file d'attente est la
@@ -190,8 +192,10 @@ Voilà qui est intéressant : la sortie des deux coroutines est entremêlée !
 Cela signifie que les deux tâches ont été exécutées simultanément, de façon
 **concurrente**.
 
-Nous avons tout ce qu'il nous faut pour modéliser notre boucle événementielle
-dans la classe `Loop` suivante :
+Nous avons tout ce qu'il nous faut pour modéliser une boucle événementielle,
+c'est-à-dire une boucle qui s'occupe de programmer l'exécution et le réveil
+des tâches dont elle a la charge. Implémentons celle-ci dans la classe `Loop`
+suivante :
 
 ```python
 from collections import deque
@@ -269,9 +273,9 @@ Tac
 
 Pas de surprise.
 
-Toute la programmation asynchrone repose sur ce genre de boucle événementielle,
-qui sert, en fait, d'*ordonnanceur* aux tâches en cours d'exécution. Pour vous
-en convaincre, regardez cet bout de code qui utilise `asyncio` :
+Toute la programmation asynchrone repose sur ce genre de boucle qui sert en
+fait d'*ordonnanceur* aux tâches en cours d'exécution. Pour vous en convaincre,
+regardez ce bout de code qui utilise `asyncio` :
 
 ```python
 >>> import asyncio
@@ -292,5 +296,5 @@ Bacon
 Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction
 `asyncio.wait` : il s'agit simplement d'une coroutine qui sert à lancer
 plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de
-retourner. *Nous la reprogrammerons nous-mêmes très bientôt*. ;)
+retourner. Nous la reprogrammerons nous-mêmes très bientôt. ;)
 
