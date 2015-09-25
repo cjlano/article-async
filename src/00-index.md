@@ -1,5 +1,5 @@
 ---
-title: "'N' exemples pour découvrir la programmation asynchrone"
+title: "Découvrons la programmation asynchrone en quelques exemples"
 author: "Arnaud Calmettes (nohar)"
 date: \today
 papersize: a4paper
