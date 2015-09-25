@@ -287,7 +287,7 @@ Tac
 Bacon
 ({Task(&lt;tic_tac&gt;)&lt;result=<span class="st">&#39;Boom!&#39;</span>&gt;, Task(&lt;spam&gt;)&lt;result=<span class="st">&#39;SPAM!&#39;</span>&gt;}, <span class="dt">set</span>())</code></pre>
 <p>Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction <code>asyncio.wait</code> : il s'agit simplement d'une coroutine qui sert à lancer plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de retourner. Nous la reprogrammerons nous-mêmes très bientôt. ;)</p>
-<h1 id="exemple-n2-exécuter-des-tâches-concurrentes-depuis-une-coroutine"><span class="header-section-number">3</span> Exemple n°2 : Exécuter des tâches concurrentes depuis une coroutine</h1>
+<h1 id="exemple-n2-exécuter-des-tâches-concurrentes"><span class="header-section-number">3</span> Exemple n°2 : Exécuter des tâches concurrentes</h1>
 <p>Dans le précédent exemple, nous avons déclenché l'exécution concurrente de deux coroutines en les programmant explicitement dans la boucle :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
 &gt;&gt;&gt; event_loop.schedule(Task(tic_tac()))
