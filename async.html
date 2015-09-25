@@ -5,7 +5,7 @@
   <meta name="generator" content="pandoc">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <meta name="author" content="Arnaud Calmettes (nohar)">
-  <title>'N' exemples pour découvrir la programmation asynchrone</title>
+  <title>Découvrons la programmation asynchrone en quelques exemples</title>
   <style type="text/css">code{white-space: pre;}</style>
   <!--[if lt IE 9]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
@@ -35,7 +35,7 @@ code > span.er { color: #ff0000; font-weight: bold; }
 </head>
 <body>
 <header>
-<h1 class="title">'N' exemples pour découvrir la programmation asynchrone</h1>
+<h1 class="title">Découvrons la programmation asynchrone en quelques exemples</h1>
 <h2 class="author">Arnaud Calmettes (nohar)</h2>
 </header>
 <h1 id="ça-veut-dire-quoi-asynchrone"><span class="header-section-number">1</span> Ça veut dire quoi, <em>asynchrone</em> ?</h1>
@@ -545,7 +545,48 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 <p>Notre mécanisme d'annulation fonctionne comme prévu. Cela dit, on peut aussi imaginer tout simplement vouloir <em>attendre</em> de façon asynchrone que la sous-tâche ait terminé son exécution avant de quitter proprement…</p>
 <p>Mais ça, je vous le garde pour le prochain exemple. ;)</p>
 <h1 id="exemple-n3-attendre-de-façon-asynchrone"><span class="header-section-number">4</span> Exemple n°3 : Attendre de façon asynchrone</h1>
-<p>Dans l'exemple n°1, nous avons vu un bref appel à une fonction d'<code>asyncio</code> :</p>
+<p>À la fin du précédent exemple, nous avons implémenté un petit mécanisme <em>d'annulation</em> de tâches en cours d'exécution, qui permet d'éviter qu'une tâche <em>fille</em> survive à sa tâche <em>mère</em> en s'exécutant plus longtemps qu'elle. Cependant, il n'est peut-être pas toujours adéquat d'annuler brutalement une tâche. Par exemple, on peut imaginer que si celle-ci a des ressources à libérer, l'annuler risque de créer une fuite de mémoire…</p>
+<p>Pour cette raison, on veut se donner un moyen <em>d'attendre</em> (de façon asynchrone) qu'une tâche ait fini de s'exécuter. En soi, cela n'est pas bien difficile, puisqu'il suffit de <code>yield</code>-er <em>tant que</em> l'événement que nous attendons ne s'est pas encore produit :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> example():
+    <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
+    <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
+    sub = <span class="kw">yield</span> <span class="ch">from</span> ensure_future(subtask())
+    <span class="dt">print</span>(<span class="st">&quot;Retour dans &#39;example&#39;&quot;</span>)
+    <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
+        <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
+        <span class="kw">yield</span>
+
+    <span class="dt">print</span>(<span class="st">&quot;En attente de la fin de &#39;subtask&#39;&quot;</span>)
+    <span class="kw">while</span> not sub.is_done() and not sub.is_cancelled():
+        <span class="kw">yield</span>
+    <span class="dt">print</span>(<span class="st">&quot;Ça y est, je peux quitter&quot;</span>)
+
+<span class="kw">def</span> subtask():
+    <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;subtask&#39;&quot;</span>)
+    <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">5</span>):
+        <span class="dt">print</span>(<span class="st">&quot;(subtask)&quot;</span>)
+        <span class="kw">yield</span></code></pre>
+<p>Essayons :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.run_until_complete(example())
+Tâche <span class="st">&#39;example&#39;</span>
+Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
+Retour dans <span class="st">&#39;example&#39;</span>
+(example)
+Tâche <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(example)
+(subtask)
+(example)
+(subtask)
+En attente de la fin de <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(subtask)
+&lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+Ça y est, je peux quitter
+&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>C'est plutôt enfantin, en fait.</p>
+<p>Souvenez-vous maintenant de la coroutine <code>wait()</code> d'<code>asyncio</code> que nous avons aperçue dans l'exemple n°1 :</p>
 <pre class="python3"><code>&gt;&gt;&gt; import asyncio
 &gt;&gt;&gt; loop = asyncio.get_event_loop()
 &gt;&gt;&gt; loop.run_until_complete(asyncio.wait([tic_tac(), spam()]))
@@ -555,12 +596,12 @@ Tac
 eggs
 bacon
 ({Task(&lt;tic_tac&gt;)&lt;result=&#39;Boum!&#39;&gt;, Task(&lt;spam&gt;)&lt;result=&#39;spam&#39;&gt;}, set())</code></pre>
-<p>La fonction intéressante de cet exemple est <code>asyncio.wait()</code>. Celle-ci permet d'attendre qu'une ou plusieurs tâches (lancées en parallèle) soient terminées. Sa valeur de retour se compose de deux ensembles (<code>set()</code>) :</p>
+<p>Celle-ci permet d'attendre qu'une ou plusieurs tâches (lancées en parallèle) soient terminées avant de rendre la main. Sa valeur de retour se compose de deux ensembles (<code>set()</code>) :</p>
 <ul>
 <li>Le premier contient les tâches qui se sont terminées normalement ;</li>
-<li>Le second contient les tâches qui ne sont pas encore terminées, ont été annulées ou ont quitté sur une erreur.</li>
+<li>Le second contient les tâches qui ont été annulées ou ont quitté sur une erreur.</li>
 </ul>
-<p>C'est cette fonction que nous allons implémenter maintenant.</p>
+<p>C'est cette fonction que nous allons implémenter maintenant, parce qu'il serait vraiment dommage de se passer de sa souplesse d'utilisation !</p>
 <p>En fait, le plus difficile dans cette fonction est surtout sa partie cosmétique. Pour avoir un comportement souple, il faut gérer le cas où les tâches passées à cette fonction :</p>
 <ul>
 <li>Sont des coroutines et non des instances de la classe <code>Task</code>,</li>
@@ -569,86 +610,85 @@ bacon
 </ul>
 <p>Voilà ce que cela peut donner :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> wait(tasks):
-    <span class="co"># On lance les tâches qui ne l&#39;ont pas encore été</span>
-    <span class="kw">for</span> idx, task in <span class="dt">enumerate</span>(tasks):
-        <span class="co"># Si c&#39;est une coroutine, on crée la tâche correspondante</span>
-        <span class="kw">if</span> not <span class="dt">isinstance</span>(task, Task):
-            task = tasks[idx] = Task(task)
-        <span class="co"># Si la tâche n&#39;a pas encore été lancée, on la lance</span>
-        <span class="kw">if</span> task.status == STATUS_NEW:
-            <span class="kw">yield</span> <span class="ch">from</span> launch(task)
-
-    <span class="co"># On attend que toutes les tâches soient terminées</span>
-    <span class="kw">while</span> not <span class="dt">all</span>(task.is_done() <span class="kw">for</span> task in tasks):
-        <span class="kw">yield</span>
-
-    <span class="co"># On crée les deux ensembles pour le résultat</span>
-    finished = <span class="dt">set</span>()
-    error = <span class="dt">set</span>()
+    <span class="co"># On commence par séparer les tâches en cours d&#39;exécution des autres</span>
+    running, to_launch, finished, error = <span class="dt">set</span>(), <span class="dt">set</span>(), <span class="dt">set</span>(), <span class="dt">set</span>()
     <span class="kw">for</span> task in tasks:
-        <span class="kw">if</span> task.status == STATUS_FINISHED:
-            finished.add(task)
-        <span class="kw">elif</span> task.status == STATUS_ERROR:
-            error.add(task)
+        <span class="kw">if</span> <span class="dt">isinstance</span>(task, Task):
+            <span class="kw">if</span> task.status == STATUS_FINISHED:
+                finished.add(task)
+            <span class="kw">elif</span> task.status in {STATUS_ERROR, STATUS_CANCELLED}:
+                error.add(task)
+            <span class="kw">else</span>:
+                running.add(task)
+        <span class="kw">else</span>:
+            to_launch.add(task)
+
+    <span class="co"># On lance les tâches qui ont besoin d&#39;être lancées</span>
+    <span class="kw">if</span> to_launch:
+        launched = <span class="kw">yield</span> CALL_SCHEDULE, to_launch
+        running.update(launched)
+
+    <span class="co"># On attend que tout le monde ait fini de s&#39;exécuter</span>
+    <span class="kw">while</span> running:
+        <span class="co"># On itère sur une copie immuable de l&#39;ensemble &#39;running&#39;</span>
+        <span class="co"># de façon à pouvoir modifier celui-ci sans risque dans la boucle</span>
+        <span class="kw">for</span> task in <span class="dt">tuple</span>(running):
+            <span class="kw">if</span> not task.is_done():
+                <span class="kw">continue</span>
+            running.remove(task)
+            <span class="kw">if</span> task.status == STATUS_FINISHED:
+                finished.add(task)
+            <span class="kw">else</span>:
+                error.add(task)
+
+        <span class="co"># S&#39;il y a encore des tâches inachevées, on suspend la coroutine</span>
+        <span class="kw">if</span> running:
+            <span class="kw">yield</span>
 
     <span class="kw">return</span> finished, error</code></pre>
-<p>Nous pouvons vérifier que cette nouvelle fonction marche comme prévu avec les coroutines suivantes.</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> repeat(msg, times):
-...    <span class="dt">print</span>(<span class="st">&quot;lancement de la tâche&quot;</span>, <span class="dt">repr</span>(msg))
-...     <span class="kw">for</span> _ in <span class="dt">range</span>(times):
-...         <span class="dt">print</span>(msg)
+<p>Vérifions que nous avons bien un comportement similaire à <code>asyncio</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.run_until_complete(wait([tic_tac(), spam()]))
+Tic
+Spam
+Tac
+Eggs
+&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;
+Bacon
+&lt;Task <span class="st">&#39;spam&#39;</span> [FINISHED] (<span class="st">&#39;SPAM!&#39;</span>)&gt;
+&lt;Task <span class="st">&#39;wait&#39;</span> [FINISHED] (({&lt;Task <span class="st">&#39;tic_tac&#39;</span> [FINISHED] (<span class="st">&#39;Boom!&#39;</span>)&gt;, &lt;Task <span class="st">&#39;spam&#39;</span> [FINISHED] (<span class="st">&#39;SPAM!&#39;</span>)&gt;}, <span class="dt">set</span>()))&gt;</code></pre>
+<p>Pas mal ! Et pour attendre une tâche préalablement démarrée ?</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> example():
+...     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
+...     <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
+...     sub = <span class="kw">yield</span> <span class="ch">from</span> ensure_future(subtask())
+...     <span class="dt">print</span>(<span class="st">&quot;Retour dans &#39;example&#39;&quot;</span>)
+...     <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
+...         <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
 ...         <span class="kw">yield</span>
 ...
-&gt;&gt;&gt; <span class="kw">def</span> main_task():
-...     <span class="dt">print</span>(<span class="st">&quot;Lancement de 3 tâches en parallèle&quot;</span>)
-...     returned, error = <span class="kw">yield</span> <span class="ch">from</span> wait([
-...         repeat(<span class="st">&quot;spam&quot;</span>, <span class="dv">10</span>),
-...         repeat(<span class="st">&quot;eggs&quot;</span>, <span class="dv">3</span>),
-...         repeat(<span class="st">&quot;bacon&quot;</span>, <span class="dv">5</span>),
-...     ])
-...     <span class="dt">print</span>(<span class="st">&quot;Retour à la fonction principale: {} OK, {} erreurs&quot;</span>.<span class="dt">format</span>(
-...         <span class="dt">len</span>(returned), <span class="dt">len</span>(error)
-...     ))
-...</code></pre>
-<p>Et le résultat :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = Loop()
-&gt;&gt;&gt; loop.schedule(main_task())
-&gt;&gt;&gt; loop.run_once()
-Lancement de <span class="dv">3</span> tâches en parallèle
-lancement de la tâche <span class="st">&#39;spam&#39;</span>
-spam
-lancement de la tâche <span class="st">&#39;eggs&#39;</span>
-eggs
-spam
-lancement de la tâche <span class="st">&#39;bacon&#39;</span>
-bacon
-eggs
-spam
-bacon
-eggs
-spam
-bacon
-&lt;Task <span class="st">&#39;repeat&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
-spam
-bacon
-spam
-bacon
-spam
-&lt;Task <span class="st">&#39;repeat&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
-spam
-spam
-spam
-&lt;Task <span class="st">&#39;repeat&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
-Retour à la fonction principale: <span class="dv">3</span> OK, <span class="dv">0</span> erreurs
-&lt;Task <span class="st">&#39;main_task&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
-&gt;&gt;&gt;</code></pre>
-<p>En guise d'exercice, si cela vous intéresse, vous pouvez :</p>
-<ul>
-<li>Essayer d'expliquer pourquoi les tâches ne démarrent pas toutes en même temps,</li>
-<li>Constater que si vous réimplémentez cet exemple avec <code>asyncio</code>, ce problème ne se produit pas,</li>
-<li>Modifier la fonction <code>wait()</code> et la boucle événementielle pour coller au comportement d'<code>asyncio</code>.</li>
-</ul>
-<p>En ce qui nous concerne, la fonction <code>wait</code> que nous venons d'implémenter nous suffira largement pour la suite.</p>
+...     <span class="dt">print</span>(<span class="st">&quot;En attente de la fin de &#39;subtask&#39;&quot;</span>)
+...     <span class="kw">yield</span> <span class="ch">from</span> wait([sub])
+...     <span class="dt">print</span>(<span class="st">&quot;Ça y est, je peux quitter&quot;</span>)
+...
+&gt;&gt;&gt; event_loop.run_until_complete(example())
+Tâche <span class="st">&#39;example&#39;</span>
+Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
+Retour dans <span class="st">&#39;example&#39;</span>
+(example)
+Tâche <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(example)
+(subtask)
+(example)
+(subtask)
+En attente de la fin de <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(subtask)
+&lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+Ça y est, je peux quitter
+&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>Parfait. Nous venons d'implémenter notre première coroutine <em>d'attente asynchrone</em>. Celle-ci permet d'endormir une tâche pour ne la réveiller que lorsqu'une ou plusieurs autres tâches auront fini de s'exécuter. S'il y avait une seule chose à retenir de la programmation asynchrone, c'est bien ce mécanisme. C'est dans le fait de pouvoir dire à une boucle événementielle : « je fais une pause, réveille-moi quand il se sera passé quelque chose d'intéressant », que réside tout l'intérêt de ce modèle d'exécution. Et ce genre d'attente est vraiment très fréquent en informatique !</p>
 <h1 id="exemple-n4-modélisons-le-serveur-du-fast-food-avec-asyncio"><span class="header-section-number">5</span> Exemple n°4 : Modélisons le serveur du <em>fast food</em> avec <code>asyncio</code></h1>
 <p>Maintenant que nous avons compris comment fonctionne sa boucle événementielle, il est temps de nous mettre en jambes avec <code>asyncio</code> en l'utilisant pour modéliser l'exemple du début de cet article : l'employé de <em>fast food</em>.</p>
 <p>Voici d'abord à quoi ressemble le programme dans sa version synchrone.</p>
