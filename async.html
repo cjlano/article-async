@@ -633,7 +633,7 @@ bacon
         <span class="co"># On itère sur une copie immuable de l&#39;ensemble &#39;running&#39;</span>
         <span class="co"># de façon à pouvoir modifier celui-ci sans risque dans la boucle</span>
         <span class="kw">for</span> task in <span class="dt">tuple</span>(running):
-            <span class="kw">if</span> not task.is_done():
+            <span class="kw">if</span> not (task.is_done() or task.is_cancelled()):
                 <span class="kw">continue</span>
             running.remove(task)
             <span class="kw">if</span> task.status == STATUS_FINISHED:

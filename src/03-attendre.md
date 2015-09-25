@@ -120,7 +120,7 @@ def wait(tasks):
         # On itère sur une copie immuable de l'ensemble 'running'
         # de façon à pouvoir modifier celui-ci sans risque dans la boucle
         for task in tuple(running):
-            if not task.is_done():
+            if not (task.is_done() or task.is_cancelled()):
                 continue
             running.remove(task)
             if task.status == STATUS_FINISHED:
