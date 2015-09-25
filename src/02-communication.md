@@ -1,4 +1,4 @@
-# Exemple n°2 : Exécuter des tâches concurrentes depuis une coroutine
+# Exemple n°2 : Exécuter des tâches concurrentes
 
 Dans le précédent exemple, nous avons déclenché l'exécution concurrente de deux
 coroutines en les programmant explicitement dans la boucle :
