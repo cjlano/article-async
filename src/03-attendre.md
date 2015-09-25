@@ -1,4 +1,4 @@
-# Exemple n°3 : Attendre la fin de l'exécution d'une ou plusieurs tâches
+# Exemple n°3 : Attendre de façon asynchrone
 
 Dans l'exemple n°1, nous avons vu un bref appel à une fonction d'`asyncio` :
 
@@ -19,7 +19,7 @@ d'attendre qu'une ou plusieurs tâches (lancées en parallèle) soient terminée
 Sa valeur de retour se compose de deux ensembles (`set()`) :
 
 * Le premier contient les tâches qui se sont terminées normalement ;
-* Le second contient les tâches qui ne sont pas encore terminées, 
+* Le second contient les tâches qui ne sont pas encore terminées,
   ont été annulées ou ont quitté sur une erreur.
 
 C'est cette fonction que nous allons implémenter maintenant.

@@ -287,19 +287,22 @@ Tac
 Bacon
 ({Task(&lt;tic_tac&gt;)&lt;result=<span class="st">&#39;Boom!&#39;</span>&gt;, Task(&lt;spam&gt;)&lt;result=<span class="st">&#39;SPAM!&#39;</span>&gt;}, <span class="dt">set</span>())</code></pre>
 <p>Drôlement familier, n'est-ce pas ? Ne bloquez pas sur la fonction <code>asyncio.wait</code> : il s'agit simplement d'une coroutine qui sert à lancer plusieurs tâches en parallèle et attendre que celles-ci se terminent avant de retourner. Nous la reprogrammerons nous-mêmes très bientôt. ;)</p>
-<h1 id="exemple-n2-communiquer-avec-la-boucle-événementielle"><span class="header-section-number">3</span> Exemple n°2 : Communiquer avec la boucle événementielle</h1>
-<p>Jusqu'ici, vous vous êtes probablement aperçu que nos coroutines ne <code>yield</code>-aient aucune valeur. En effet, le simple fait qu'elles se suspendent suffit à les faire exécuter en concurrence. Néanmoins, nous avons vu dans un <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">précédent article</a> que ce mot-clé <code>yield</code> était en Python un véritable canal de communication entre la coroutine et le code qui l'exécute.</p>
-<p>Ainsi, nous savons que nous pouvons faire communiquer la boucle avec les tâches qu'elle exécute. C'est d'ailleurs tout l'intérêt de la ligne suivante dans la classe <code>Task</code> :</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">class</span> Task:
-    <span class="kw">def</span> run(<span class="ot">self</span>):
-        <span class="co"># ...</span>
-        <span class="kw">return</span> <span class="ot">self</span>.coro.send(<span class="ot">self</span>.msg)</code></pre>
-<p>Mais à quoi cela pourrait-il bien servir ? Faisons, si vous le voulez bien, un petit parallèle entre notre boucle événementielle et un système d'exploitation (OS).</p>
-<p>Vous avez peut-être déjà lu ou entendu que l'OS est chargé d'exécuter des programmes sur l'ordinateur : à chaque instant il sait quel programme est en train de s'exécuter, il a d'ailleurs le pouvoir de les démarrer et de les interrompre, exactement comme notre boucle événementielle avec ses tâches.</p>
-<p>Parfois (enfin, plutôt souvent, même) un programme <code>A</code> a besoin que l'OS lui rende un service, par exemple pour lancer un autre programme <code>B</code>. Dans ce cas, le programme <code>A</code> va réaliser ce que l'on appelle un <em>appel système</em>, c'est-à-dire qu'il va <em>envoyer un message</em> à l'OS pour lui demander de bien vouloir lancer le nouveau programme <code>B</code>.</p>
-<p>Eh bien nous pourrions tout à fait transposer cette notion d'<em>appels système</em> à notre boucle événementielle. Et nous allons même nous servir de <code>yield</code> pour ce faire.</p>
-<p>Mettons-nous en situation. Nous voulons que notre coroutine <code>example</code> lance une nouvelle tâche <code>subtask</code>.</p>
-<p>La façon la plus simple de nous y prendre serait d'appeler simplement la seconde tâche dans la première, au moyen de <code>yield from</code> :</p>
+<h1 id="exemple-n2-exécuter-des-tâches-concurrentes-depuis-une-coroutine"><span class="header-section-number">3</span> Exemple n°2 : Exécuter des tâches concurrentes depuis une coroutine</h1>
+<p>Dans le précédent exemple, nous avons déclenché l'exécution concurrente de deux coroutines en les programmant explicitement dans la boucle :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.schedule(Task(tic_tac()))
+&gt;&gt;&gt; event_loop.schedule(Task(spam()))
+&gt;&gt;&gt; event_loop.run_until_empty()
+<span class="co"># les deux coroutines s&#39;exécutent en parallèle.</span></code></pre>
+<p>Ce petit morceau de code nous a permis de prouver qu'avec une boucle événementielle et des coroutines, on avait tout ce qu'il nous fallait pour définir un modèle d'exécution concurrent.</p>
+<p>Cependant, dans la pratique, on ne devrait pas avoir à manipuler directement la boucle pour réaliser quelque chose d'aussi simple que le lancement d'une tâche parallèle. Si l'on se réfère aux autres modes de concurrence :</p>
+<ul>
+<li>On peut lancer un <em>thread</em> et attendre la fin de l'exécution de celui-ci depuis n'importe quel <em>thread</em> en cours d'exécution.</li>
+<li>On peut créer, attendre ou arrêter un processus fils depuis n'importe quel processus en cours d'exécution.</li>
+</ul>
+<p>Qu'il s'agisse de <em>threads</em> ou de processus, ces actions ne requièrent à aucun moment d'interagir directement avec l'ordonnanceur de votre système d'exploitation (OS).<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a></p>
+<p>Par extension, <strong>on devrait pouvoir lancer, attendre la fin de l'exécution, ou annuler une « sous-coroutine » depuis n'importe quelle coroutine en cours d'exécution</strong>, sans avoir à appeler la méthode <code>schedule()</code> ni même toucher directement à la boucle événementielle.</p>
+<p>Commençons par chercher le moyen de faire appel à une coroutine depuis une tâche en cours d'exécution. Rappelons d'abord que la syntaxe <code>yield from</code> introduite dans le langage depuis Python 3.3 nous permet déjà de passer la main à une autre coroutine. Par exemple, dans le code suivant, la coroutine <code>example</code> utilise cette syntaxe pour laisser temporairement la main à la coroutine <code>subtask</code> :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> example():
     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
     <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
@@ -311,17 +314,15 @@ Bacon
 
 <span class="kw">def</span> subtask():
     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;subtask&#39;&quot;</span>)
-    <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
+    <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">2</span>):
         <span class="dt">print</span>(<span class="st">&quot;(subtask)&quot;</span>)
         <span class="kw">yield</span></code></pre>
-<p>Voilà ce que cela donnerait :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = Loop()
-&gt;&gt;&gt; loop.schedule(example())
-&gt;&gt;&gt; loop.run_once()
+<p>Vérifions :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.run_until_complete(example())
 Tâche <span class="st">&#39;example&#39;</span>
 Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
 Tâche <span class="st">&#39;subtask&#39;</span>
-(subtask)
 (subtask)
 (subtask)
 Retour dans <span class="st">&#39;example&#39;</span>
@@ -329,46 +330,138 @@ Retour dans <span class="st">&#39;example&#39;</span>
 (example)
 (example)
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
-<p>La tâche <code>subtask</code> a été exécutée complètement avant que <code>example</code> ne reprenne la main. C'est pas mal, ça nous montre comment appeler des <em>sous-coroutines</em>, mais comment faire si on avait voulu que la coroutine <code>subtask</code> s'exécute en parallèle de <code>example</code> ?</p>
-<p>Eh bien pour cela, il faut créer une tâche dédiée à la coroutine <code>subtask</code> dans la boucle événementielle. On peut donc imaginer envoyer un message à la boucle événementielle avec le mot-clé <code>yield</code>. Ce message serait composé de deux éléments :</p>
-<ul>
-<li>une <em>action</em> (l'ordre que l'on envoie à la boucle, ici « exécuter »)</li>
-<li>et une <em>valeur</em> (ici, la coroutine à exécuter dans une nouvelle tâche)</li>
-</ul>
-<p>Notre tâche <code>example</code> ressemblerait alors à ceci :</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> example():
-    <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
-    <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
-    <span class="kw">yield</span> <span class="st">&#39;EXEC&#39;</span>, subtask()  <span class="co"># Envoi du message</span>
-    <span class="dt">print</span>(<span class="st">&quot;Retour dans &#39;example&#39;&quot;</span>)
-    <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
-        <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
-        <span class="kw">yield</span></code></pre>
-<p>Ce message sera retourné à la boucle lorsqu'elle appellera <code>task.run()</code>. Il nous suffit de rajouter un peu de code à ce niveau pour le lire :</p>
-<pre class="sourceCode python"><code class="sourceCode python">MSG_EXEC = <span class="st">&#39;EXEC&#39;</span>
+<p>Ainsi, Python nous fournit déjà nativement un élément de syntaxe pour <em>lancer une tâche de façon séquentielle</em> à l'intérieur d'une coroutine. Mais ce n'est pas tout à fait ce que nous voulons : notre but, ici, est de réussir à lancer la coroutine <code>subtask</code> de façon qu'elle s'exécute <em>en parallèle</em> de la coroutine <code>example</code>, et non d'attendre que <code>subtask</code> soit terminée pour reprendre l'exécution de <code>example</code>.</p>
+<p>Pour ce faire, nous allons tirer parti d'une particularité des coroutines que nous avons découverte <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">dans cet article</a> : il est possible d'échanger des messages avec une coroutine en cours d'exécution.</p>
+<p>Pour bien comprendre ce qui va suivre, continuons, si vous le voulez bien, notre parallèle avec le fonctionnement d'un système d'exploitation. Lorsqu'un processus<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> <code>A</code> a besoin d'exécuter un programme <code>B</code> dans un processus concurrent, celui-ci réalise ce que l'on appelle un <em>appel système</em>, c'est-à-dire qu'il <em>envoie un message</em> à l'OS pour lui demander de bien vouloir lancer le nouveau programme <code>B</code>.<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a> Dans la pratique, cet <em>appel système</em> ressemble à s'y méprendre à n'importe quel appel de fonction. L'idée-clé, c'est que le processus peut <em>communiquer</em> avec le noyau du système d'exploitation en échangeant des <em>messages</em> avec lui.</p>
+<p>Nous allons maintenant transposer cette notion à notre cas : nous voulons réussir à faire communiquer la boucle événementielle avec les coroutines qu'elle exécute grâce à des <em>messages</em>.</p>
+<p>Rappelons rapidement que l'on peut envoyer une donnée à une coroutine au moment où celle-ci se suspend, en utilisant la méthode <code>send</code> des coroutines :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> receiver():
+...     <span class="kw">while</span> <span class="ot">True</span>:
+...         data = <span class="kw">yield</span>
+...         <span class="dt">print</span>(<span class="st">&#39;received:&#39;</span>, <span class="dt">repr</span>(data))
+...
+&gt;&gt;&gt; coro = receiver()
+&gt;&gt;&gt; <span class="dt">next</span>(coro)  <span class="co"># La coroutine doit être démarrée pour recevoir des données</span>
+&gt;&gt;&gt; coro.send(<span class="st">&quot;spam&quot;</span>)
+received: <span class="st">&#39;spam&#39;</span>
+&gt;&gt;&gt; coro.send(<span class="st">&quot;eggs&quot;</span>)
+received: <span class="st">&#39;eggs&#39;</span>
+&gt;&gt;&gt; coro.send(<span class="st">&quot;bacon&quot;</span>)
+received: <span class="st">&#39;bacon&#39;</span></code></pre>
+<p>À l'opposé, on peut également envoyer des données depuis une coroutine en passant un argument au mot-clé <code>yield</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> sender():
+...     <span class="kw">while</span> <span class="ot">True</span>:
+...        <span class="kw">yield</span> <span class="st">&quot;spam&quot;</span>
+...        <span class="kw">yield</span> <span class="st">&quot;eggs&quot;</span>
+...        <span class="kw">yield</span> <span class="st">&quot;bacon&quot;</span>
+...
+&gt;&gt;&gt; coro = sender()
+&gt;&gt;&gt; coro.send(<span class="ot">None</span>)  <span class="co"># Équivalent à next(coro)</span>
+<span class="co">&#39;spam&#39;</span>
+&gt;&gt;&gt; coro.send(<span class="ot">None</span>)
+<span class="co">&#39;eggs&#39;</span>
+&gt;&gt;&gt; coro.send(<span class="ot">None</span>)
+<span class="co">&#39;bacon&#39;</span></code></pre>
+<p>On peut donc parfaitement imaginer simuler un appel système :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> requester():
+...     data = <span class="kw">yield</span> <span class="st">&#39;REQUÊTE&#39;</span>
+...     <span class="dt">print</span>(<span class="st">&#39;data:&#39;</span>, <span class="dt">repr</span>(data))
+...     <span class="kw">return</span>
+...
+&gt;&gt;&gt; coro = requester()
+&gt;&gt;&gt; coro.send(<span class="ot">None</span>)  <span class="co"># On lance la coroutine</span>
+<span class="co">&#39;REQUÊTE&#39;</span>
+&gt;&gt;&gt; <span class="co"># La coroutine vient de nous envoyer un message.</span>
+... <span class="co"># On lui répond.</span>
+...
+&gt;&gt;&gt; coro.send(<span class="st">&#39;RÉPONSE&#39;</span>)
+data: <span class="st">&#39;RÉPONSE&#39;</span></code></pre>
+<p>Comme vous le constatez, la syntaxe de Python rend assez intuitif le fait que notre coroutine peut envoyer des requêtes à son environnement d'exécution, et se suspendre jusqu'à ce qu'on lui envoie le résultat de cette requête.</p>
+<p>Pour que ces messages soient transmis par notre classe <code>Task</code> du premier exemple, nous devons l'accomoder un petit peu :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">class</span> Task:
+    <span class="kw">def</span> <span class="ot">__init__</span>(<span class="ot">self</span>):
+        <span class="co"># ...</span>
+        <span class="ot">self</span>.msg = <span class="ot">None</span>
+
+    <span class="kw">def</span> run(<span class="ot">self</span>):
+        <span class="kw">try</span>:
+            <span class="ot">self</span>.status = STATUS_RUNNING
+            <span class="kw">return</span> <span class="ot">self</span>.coro.send(<span class="ot">self</span>.msg)
+        <span class="co"># ...</span></code></pre>
+<p>Ainsi, on peut envoyer un message à une tâche simplement en affectant son attribut <code>task.msg</code>, et la méthode <code>task.run()</code> retourne maintenant tous les messages que la coroutine pourrait <code>yield</code>-er.</p>
+<p>Reste à déterminer la forme des messages grâce auxquels la coroutine peut faire appel à sa boucle d'exécution. De manière similaire aux appels système, on peut par exemple décider que ces messages seront un tuple sous la forme suivante :</p>
+<pre class="sourceCode python"><code class="sourceCode python">(TYPE_APPEL, arguments)</code></pre>
+<p>Par exemple, pour demander à la boucle événementielle de lancer une ou plusieurs coroutines en parallèle, le message serait :</p>
+<pre class="sourceCode python"><code class="sourceCode python">(<span class="st">&#39;SCHEDULE&#39;</span>, [task1, task2, ...])</code></pre>
+<p>Modifions la méthode <code>_loop()</code> de notre boucle pour qu'elle réagisse à ces messages :</p>
+<pre class="sourceCode python"><code class="sourceCode python">CALL_SCHEDULE = <span class="st">&#39;SCHEDULE&#39;</span>
 
 <span class="kw">class</span> Loop:
-    <span class="kw">def</span> run_once(<span class="ot">self</span>):
-        <span class="kw">while</span> <span class="ot">self</span>._running:
-            task = <span class="ot">self</span>._running.popleft()
-            msg = task.run()
+    <span class="kw">def</span> <span class="ot">__init__</span>(<span class="ot">self</span>):
+        <span class="ot">self</span>._running = deque()
 
-            <span class="kw">if</span> task.is_done():
-                <span class="dt">print</span>(task)
-                <span class="kw">continue</span>
+    <span class="kw">def</span> _loop(<span class="ot">self</span>):
+        task = <span class="ot">self</span>._running.popleft()
+        msg = task.run()  <span class="co"># Réception du message</span>
 
+        <span class="kw">if</span> task.is_done():
+            <span class="dt">print</span>(task)
+        <span class="kw">else</span>:
             <span class="ot">self</span>.schedule(task)
 
-            <span class="kw">if</span> msg:
-                <span class="co"># Si la coroutine a envoyé un message à la boucle</span>
-                action, value = msg
-                <span class="kw">if</span> action == MSG_EXEC:
-                    <span class="co"># Exécute une coroutine dans une tâche dédiée</span>
-                    <span class="ot">self</span>.schedule(value)</code></pre>
-<p>Et voilà le résultat :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = Loop()
-&gt;&gt;&gt; loop.schedule(example())
-&gt;&gt;&gt; loop.run_once()
+        <span class="kw">if</span> not msg:
+            <span class="kw">return</span>
+
+        msg_type, args = msg
+        <span class="kw">if</span> msg_type == CALL_SCHEDULE:
+            <span class="co"># Si le message est un ordre d&#39;exécuter des tâches parallèles,</span>
+            <span class="co"># on programme ces tâches et on les retourne à la tâche</span>
+            <span class="co"># appelante.</span>
+            task.msg = <span class="dt">tuple</span>(<span class="ot">self</span>.schedule(subtask) <span class="kw">for</span> subtask in args)
+        <span class="kw">else</span>:
+            <span class="kw">raise</span> <span class="ot">RuntimeError</span>(<span class="st">&quot;Message inconnu : {}&quot;</span>.<span class="dt">format</span>(msg_type))</code></pre>
+<p>On peut maintenant abstraire ce message derrière une coroutine que nous appellerons <code>ensure_future()</code>, pour respecter la même nomenclature qu'<code>asyncio</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> ensure_future(task):
+    <span class="co"># L&#39;appel à CALL_SCHEDULE retourne un tuple à un seul élément dans ce cas</span>
+    (task,) = <span class="kw">yield</span> CALL_SCHEDULE, [task]
+    <span class="kw">return</span> task</code></pre>
+<p>Nous disposons désormais de deux façons d'exécuter une sous-tâche depuis une coroutine :</p>
+<ul>
+<li><p><code>yield from subtask()</code> : lance l'exécution d'une coroutine de façon <em>séquentielle</em>, c'est-à-dire en lui laissant la main jusqu'à ce que celle-ci se soit terminée.</p></li>
+<li><p><code>yield from ensure_future(subtask())</code> : lance l'exécution d'une coroutine de <em>en parallèle</em>.</p></li>
+</ul>
+<p>Ainsi, si nous modifions notre coroutine <code>example()</code> définie plus haut en conséquence, nous pouvons vérifier que nos tâches sont bien exécutées de façon concurrente :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> example():
+...     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
+...     <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
+...     <span class="kw">yield</span> <span class="ch">from</span> ensure_future(subtask())
+...     <span class="dt">print</span>(<span class="st">&quot;Retour dans &#39;example&#39;&quot;</span>)
+...     <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
+...         <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
+...         <span class="kw">yield</span>
+...
+&gt;&gt;&gt; event_loop = Loop()
+&gt;&gt;&gt; event_loop.run_until_complete(example())
+Tâche <span class="st">&#39;example&#39;</span>
+Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
+Retour dans <span class="st">&#39;example&#39;</span>
+(example)
+Tâche <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(example)
+(subtask)
+(example)
+&lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>Magique, n'est-ce pas ?</p>
+<p>Par contre, une fois que notre coroutine est lancée, nous n'avons pas tout à fait le contrôle de son exécution. Par exemple, si nous rendions la tâche <code>subtask</code> plus longue qu'<code>example</code>, celle-ci lui « survivrait » :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> subtask():
+...     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;subtask&#39;&quot;</span>)
+...     <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">5</span>):
+...         <span class="dt">print</span>(<span class="st">&quot;(subtask)&quot;</span>)
+...         <span class="kw">yield</span>
+...
+&gt;&gt;&gt; event_loop.run_until_complete(example())
 Tâche <span class="st">&#39;example&#39;</span>
 Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
 Retour dans <span class="st">&#39;example&#39;</span>
@@ -380,30 +473,78 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 (example)
 (subtask)
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+&gt;&gt;&gt; <span class="co"># L&#39;exécution s&#39;arrête avec la fin de la coroutine &#39;example&#39;</span>
+... <span class="co"># Vidons ce qu&#39;il reste dans la boucle événementielle :</span>
+...
+&gt;&gt;&gt; event_loop.run_until_empty()
+(subtask)
+(subtask)
 &lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
-<p>Nous pouvons donc créer notre premier « <em>message système</em> » pour masquer les détails d'implémentation à l'utilisateur:</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> launch(task):
-    <span class="kw">if</span> not <span class="dt">isinstance</span>(task, Task):
-        task = Task(task)
-    <span class="kw">yield</span> MSG_EXEC, task
-    <span class="kw">return</span> task
+<p><strong>Que faire si nous ne voulons pas qu'une coroutine quitte avant une sous-tâche qu'elle aurait lancée en parallèle ?</strong></p>
+<p>Nous avons deux solutions. La première, dont nous nous contenterons dans cet exemple, serait de pouvoir <em>annuler</em> une tâche en cours d'exécution. Il nous suffit pour cela de créer un nouvel état dans notre classe <code>Task</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">STATUS_CANCELLED = <span class="st">&quot;CANCELLED&quot;</span>
+
+<span class="kw">class</span> Task:
+
+    <span class="co"># ...</span>
+
+    <span class="kw">def</span> cancel(<span class="ot">self</span>):
+        <span class="kw">if</span> <span class="ot">self</span>.is_done():
+            <span class="co"># Inutile d&#39;annuler une tâche déjà terminée</span>
+            <span class="kw">return</span>
+        <span class="ot">self</span>.status = STATUS_CANCELLED
+
+    <span class="kw">def</span> is_cancelled(<span class="ot">self</span>):
+        <span class="kw">return</span> <span class="ot">self</span>.status == STATUS_CANCELLED</code></pre>
+<p>Rajoutons un test dans la boucle événementielle pour déprogrammer les tâches annulées :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">class</span> Loop:
+
+    <span class="co"># ...</span>
+
+    <span class="kw">def</span> _loop(<span class="ot">self</span>):
+        task = <span class="ot">self</span>._running.popleft()
+
+        <span class="kw">if</span> task.is_cancelled():
+            <span class="co"># Si la tâche a été annulée,</span>
+            <span class="co"># on ne l&#39;exécute pas et on &quot;l&#39;oublie&quot;.</span>
+            <span class="dt">print</span>(task)
+            <span class="kw">return</span>
+
+        <span class="co"># ... le reste de la méthode est identique</span></code></pre>
+<p>Il ne nous reste plus qu'une petite coroutine utilitaire à écrire pour annuler une tâche en cours d'exécution :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> cancel(task):
+    <span class="co"># On annule la tâche</span>
+    task.cancel()
+    <span class="co"># On laisse la main à la boucle événementielle pour lui laisser l&#39;occasion</span>
+    <span class="co"># de prendre en compte l&#39;annulation</span>
+    <span class="kw">yield</span>
 
 <span class="kw">def</span> example():
     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
     <span class="dt">print</span>(<span class="st">&quot;Lancement de la tâche &#39;subtask&#39;&quot;</span>)
-    <span class="kw">yield</span> <span class="ch">from</span> launch(subtask())
+    sub = <span class="kw">yield</span> <span class="ch">from</span> ensure_future(subtask())
     <span class="dt">print</span>(<span class="st">&quot;Retour dans &#39;example&#39;&quot;</span>)
     <span class="kw">for</span> _ in <span class="dt">range</span>(<span class="dv">3</span>):
         <span class="dt">print</span>(<span class="st">&quot;(example)&quot;</span>)
-        <span class="kw">yield</span></code></pre>
-<p>Nous avons maintenant deux façons d'exécuter une nouvelle coroutine :</p>
-<ul>
-<li><code>yield from coroutine()</code> suspend l'exécution de la tâche en cours jusqu'à ce que la coroutine appelée ait terminé son exécution.</li>
-<li><code>yield from launch(coroutine())</code> lance la coroutine dans une tâche séparée pour que celle-ci s'exécute <em>en concurrence</em> et reprend aussitôt l'exécution de la tâche en cours.</li>
-</ul>
-<p>La fonction équivalente à <code>launch()</code> dans <code>asyncio</code> est <code>asyncio.async()</code>. Notez toutefois que cette fonction est dépréciée (à cause de son nom) dans Python 3.5, qui recommande d'utiliser maintenant <code>asyncio.ensure_future()</code>.</p>
-<p>Ces deux fonctions retournent la tâche encapsulée dans un objet appelé « futur » (<code>Future</code>), correspondant grosso-modo à notre classe <code>Task</code>.</p>
-<h1 id="exemple-n3-attendre-la-fin-de-lexécution-dune-ou-plusieurs-tâches"><span class="header-section-number">4</span> Exemple n°3 : Attendre la fin de l'exécution d'une ou plusieurs tâches</h1>
+        <span class="kw">yield</span>
+    <span class="kw">yield</span> <span class="ch">from</span> cancel(sub)</code></pre>
+<p>Vérifions :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop.run_until_complete(example())
+Tâche <span class="st">&#39;example&#39;</span>
+Lancement de la tâche <span class="st">&#39;subtask&#39;</span>
+Retour dans <span class="st">&#39;example&#39;</span>
+(example)
+Tâche <span class="st">&#39;subtask&#39;</span>
+(subtask)
+(example)
+(subtask)
+(example)
+(subtask)
+&lt;Task <span class="st">&#39;subtask&#39;</span> [CANCELLED]&gt;
+&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>Notre mécanisme d'annulation fonctionne comme prévu. Cela dit, on peut aussi imaginer tout simplement vouloir <em>attendre</em> de façon asynchrone que la sous-tâche ait terminé son exécution avant de quitter proprement…</p>
+<p>Mais ça, je vous le garde pour le prochain exemple. ;)</p>
+<h1 id="exemple-n3-attendre-de-façon-asynchrone"><span class="header-section-number">4</span> Exemple n°3 : Attendre de façon asynchrone</h1>
 <p>Dans l'exemple n°1, nous avons vu un bref appel à une fonction d'<code>asyncio</code> :</p>
 <pre class="python3"><code>&gt;&gt;&gt; import asyncio
 &gt;&gt;&gt; loop = asyncio.get_event_loop()
@@ -798,7 +939,7 @@ Commande de J prête en <span class="dv">0</span>:<span class="dv">00</span>:<sp
 <p>Bon courage !</p>
 <h1 id="exemple-n5-les-entréessorties-le-nerf-de-la-guerre"><span class="header-section-number">6</span> Exemple n°5 : Les entrées/sorties, le nerf de la guerre</h1>
 <p>Vous vous demandez peut-être pourquoi on parle tout le temps d'<em>IO</em> en programmation asynchrone. En effet, les entrées/sorties des programmes semblent indissociables du concept d'asynchrone, à tel point que cela se traduit jusque dans le nom de la bibliothèque standard <code>asyncio</code> de Python. Mais <em>pourquoi</em> ?</p>
-<p>Commençons par une définition : une <em>IO</em>, c'est une opération pendant laquelle un programme <em>interagit avec un flux de données</em>. Ce <strong>flux de données</strong> peut être plein de choses : une connexion réseau, les flux standard <code>STDIN</code>, <code>STDOUT</code> ou <code>STDERR</code> du processus en cours d'exécution, un fichier, ou même une abstraction matérielle<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a>. « Interagir avec un flux de données », ça veut dire l'<strong>ouvrir</strong>, <strong>lire</strong> ou <strong>écrire</strong> dedans ou le <strong>fermer</strong>.</p>
+<p>Commençons par une définition : une <em>IO</em>, c'est une opération pendant laquelle un programme <em>interagit avec un flux de données</em>. Ce <strong>flux de données</strong> peut être plein de choses : une connexion réseau, les flux standard <code>STDIN</code>, <code>STDOUT</code> ou <code>STDERR</code> du processus en cours d'exécution, un fichier, ou même une abstraction matérielle<a href="#fn5" class="footnoteRef" id="fnref5"><sup>5</sup></a>. « Interagir avec un flux de données », ça veut dire l'<strong>ouvrir</strong>, <strong>lire</strong> ou <strong>écrire</strong> dedans ou le <strong>fermer</strong>.</p>
 <p>Jusqu'ici, nous avons travaillé sur des exemples très simples qui se contentaient d'afficher des choses à l'écran pour bien comprendre l'ordre dans lequel les instructions étaient exécutées. Nos tâches ne réalisaient du coup que des entrées/sorties, certes, mais celles-ci étaient <em>synchrones</em> : on a considéré jusqu'à maintenant qu'un <code>print()</code> dans la console s'exécute immédiatement et sans délai lors de son appel, ce qui est parfaitement intuitif...</p>
 <p>... mais pas toujours le reflet de la réalité.</p>
 <p>Prenons par exemple une IO très simple que vous réalisez en permanence sur votre ordinateur ou smartphone sans même vous en rendre compte : <strong>que se passe-t-il entre le moment où vous avez cliqué sur un lien dans une page web, et celui où le résultat commence à s'afficher sur votre écran</strong> ?</p>
@@ -1117,7 +1258,10 @@ Message reçu : Coucou!</code></pre>
 <hr />
 <ol>
 <li id="fn1"><p>En toute rigueur il s'agit d'un <em>générateur</em>, mais comme nous avons pu l'observer dans un <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">précédent article</a>, les générateurs de Python sont implémentés comme de véritables coroutines.<a href="#fnref1">↩</a></p></li>
-<li id="fn2"><p>On peut par exemple lire un son sous Linux en <em>écrivant</em> des données dans un fichier spécial qui représente la carte son !<a href="#fnref2">↩</a></p></li>
+<li id="fn2"><p>D'ailleurs, le noyau de l'OS est justement là pour vous empêcher de toucher vous-même à l'ordonnanceur !<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>Un <em>processus</em> peut être vu comme <strong>un programme en cours d'exécution</strong>.<a href="#fnref3">↩</a></p></li>
+<li id="fn4"><p>Ce comportement n'est pas exclusif aux processus : de la même façon, un <em>thread</em> <code>A</code> envoie au noyau un appel système lorsqu'il veut lancer un nouveau <em>thread</em> <code>B</code>.<a href="#fnref4">↩</a></p></li>
+<li id="fn5"><p>On peut par exemple lire un son sous Linux en <em>écrivant</em> des données dans un fichier spécial qui représente la carte son !<a href="#fnref5">↩</a></p></li>
 </ol>
 </section>
 </body>
