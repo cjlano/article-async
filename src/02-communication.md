@@ -375,7 +375,7 @@ une tâche en cours d'exécution :
 def cancel(task):
     # On annule la tâche
     task.cancel()
-    # On laisse la main à la boucle événementielle pour lui laisser l'occasion
+    # On laisse la main à la boucle événementielle pour qu'elle ait l'occasion
     # de prendre en compte l'annulation
     yield
 

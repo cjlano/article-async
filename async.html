@@ -515,7 +515,7 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> cancel(task):
     <span class="co"># On annule la tâche</span>
     task.cancel()
-    <span class="co"># On laisse la main à la boucle événementielle pour lui laisser l&#39;occasion</span>
+    <span class="co"># On laisse la main à la boucle événementielle pour qu&#39;elle ait l&#39;occasion</span>
     <span class="co"># de prendre en compte l&#39;annulation</span>
     <span class="kw">yield</span>
 
