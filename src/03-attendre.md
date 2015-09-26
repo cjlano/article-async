@@ -187,7 +187,7 @@ Parfait. Nous venons d'implémenter notre première coroutine *d'attente
 asynchrone*. Celle-ci permet d'endormir une tâche pour ne la réveiller que
 lorsqu'une ou plusieurs autres tâches auront fini de s'exécuter. S'il y avait
 une seule chose à retenir de la programmation asynchrone, c'est bien ce
-mécanisme. C'est dans le fait de pouvoir dire à une boucle événementielle :
-« je fais une pause, réveille-moi quand il se sera passé quelque chose
-d'intéressant », que réside tout l'intérêt de ce modèle d'exécution. Et ce
-genre d'attente est vraiment très fréquent en informatique !
+mécanisme. C'est dans le fait de pouvoir dire, de façon tout à fait explicite :
+« je n'ai rien à faire pour le moment, réveillez-moi quand il se sera passé
+quelque chose d'intéressant », que réside tout l'intérêt de ce modèle
+d'exécution. Et ce genre d'attente est vraiment très fréquent en informatique !
