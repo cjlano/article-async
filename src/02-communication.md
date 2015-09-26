@@ -323,7 +323,7 @@ Tâche 'subtask'
 ```
 
 L'exécution s'arrête avec la fin de la coroutine `example`, mais la coroutine
-`subtask`, elle, n'a pas terminé. Elle est encore suspendue dans la boucle, à
+`subtask`, elle, n'a pas fini. Elle est encore suspendue dans la boucle, à
 l'état de zombie alors que le reste du programme est terminé. Vidons ce qu'il
 reste dans la boucle événementielle :
 

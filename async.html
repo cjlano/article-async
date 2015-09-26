@@ -472,7 +472,7 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 (example)
 (subtask)
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
-<p>L'exécution s'arrête avec la fin de la coroutine <code>example</code>, mais la coroutine <code>subtask</code>, elle, n'a pas terminé. Elle est encore suspendue dans la boucle, à l'état de zombie alors que le reste du programme est terminé. Vidons ce qu'il reste dans la boucle événementielle :</p>
+<p>L'exécution s'arrête avec la fin de la coroutine <code>example</code>, mais la coroutine <code>subtask</code>, elle, n'a pas fini. Elle est encore suspendue dans la boucle, à l'état de zombie alors que le reste du programme est terminé. Vidons ce qu'il reste dans la boucle événementielle :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop.run_until_empty()
 (subtask)
 (subtask)
