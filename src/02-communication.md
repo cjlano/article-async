@@ -263,7 +263,7 @@ une coroutine :
   *séquentielle*, c'est-à-dire en lui laissant la main jusqu'à ce que celle-ci
   se soit terminée.
 
-* `yield from ensure_future(subtask())` : lance l'exécution d'une coroutine de
+* `yield from ensure_future(subtask())` : lance l'exécution d'une coroutine
   *en parallèle*.
 
 Ainsi, si nous modifions notre coroutine `example()` définie plus haut en
