@@ -427,7 +427,7 @@ data: <span class="st">&#39;RÉPONSE&#39;</span></code></pre>
 <p>Nous disposons désormais de deux façons d'exécuter une sous-tâche depuis une coroutine :</p>
 <ul>
 <li><p><code>yield from subtask()</code> : lance l'exécution d'une coroutine de façon <em>séquentielle</em>, c'est-à-dire en lui laissant la main jusqu'à ce que celle-ci se soit terminée.</p></li>
-<li><p><code>yield from ensure_future(subtask())</code> : lance l'exécution d'une coroutine de <em>en parallèle</em>.</p></li>
+<li><p><code>yield from ensure_future(subtask())</code> : lance l'exécution d'une coroutine <em>en parallèle</em>.</p></li>
 </ul>
 <p>Ainsi, si nous modifions notre coroutine <code>example()</code> définie plus haut en conséquence, nous pouvons vérifier que nos tâches sont bien exécutées de façon concurrente :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> example():
