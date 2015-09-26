@@ -295,13 +295,14 @@ Bacon
 &gt;&gt;&gt; event_loop.run_until_empty()
 <span class="co"># les deux coroutines s&#39;exécutent en parallèle.</span></code></pre>
 <p>Ce petit morceau de code nous a permis de prouver qu'avec une boucle événementielle et des coroutines, on avait tout ce qu'il nous fallait pour définir un modèle d'exécution concurrent.</p>
-<p>Cependant, dans la pratique, on ne devrait pas avoir à manipuler directement la boucle pour réaliser quelque chose d'aussi simple que le lancement d'une tâche parallèle. Si l'on se réfère aux autres modes de concurrence :</p>
+<p>Cependant, dans la pratique, on ne devrait pas avoir à manipuler directement la boucle pour réaliser quelque chose d'aussi simple que le lancement d'une tâche parallèle. En fait, <strong>nos classes <code>Loop</code> et <code>Task</code> sont l'implémentation à bas niveau d'un petit framework asynchrone</strong>, le programmeur ne devrait jamais avoir à y toucher à part pour lancer le programme asynchrone qu'il a écrit dans des coroutines.</p>
+<p>Si l'on se réfère aux autres modes de concurrence :</p>
 <ul>
 <li>On peut lancer un <em>thread</em> et attendre la fin de l'exécution de celui-ci depuis n'importe quel <em>thread</em> en cours d'exécution.</li>
-<li>On peut créer, attendre ou arrêter un processus fils depuis n'importe quel processus en cours d'exécution.</li>
+<li>On peut créer, attendre ou arrêter un processus depuis n'importe quel processus en cours d'exécution.</li>
 </ul>
 <p>Qu'il s'agisse de <em>threads</em> ou de processus, ces actions ne requièrent à aucun moment d'interagir directement avec l'ordonnanceur de votre système d'exploitation (OS).<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a></p>
-<p>Par extension, <strong>on devrait pouvoir lancer, attendre la fin de l'exécution, ou annuler une « sous-coroutine » depuis n'importe quelle coroutine en cours d'exécution</strong>, sans avoir à appeler la méthode <code>schedule()</code> ni même toucher directement à la boucle événementielle.</p>
+<p>De façon analogue, <strong>on devrait pouvoir lancer, attendre la fin de l'exécution, ou annuler une coroutine depuis n'importe quelle coroutine en cours d'exécution</strong>, sans avoir à toucher directement à la boucle événementielle.</p>
 <p>Commençons par chercher le moyen de faire appel à une coroutine depuis une tâche en cours d'exécution. Rappelons d'abord que la syntaxe <code>yield from</code> introduite dans le langage depuis Python 3.3 nous permet déjà de passer la main à une autre coroutine. Par exemple, dans le code suivant, la coroutine <code>example</code> utilise cette syntaxe pour laisser temporairement la main à la coroutine <code>subtask</code> :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> example():
     <span class="dt">print</span>(<span class="st">&quot;Tâche &#39;example&#39;&quot;</span>)
@@ -332,7 +333,7 @@ Retour dans <span class="st">&#39;example&#39;</span>
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
 <p>Ainsi, Python nous fournit déjà nativement un élément de syntaxe pour <em>lancer une tâche de façon séquentielle</em> à l'intérieur d'une coroutine. Mais ce n'est pas tout à fait ce que nous voulons : notre but, ici, est de réussir à lancer la coroutine <code>subtask</code> de façon qu'elle s'exécute <em>en parallèle</em> de la coroutine <code>example</code>, et non d'attendre que <code>subtask</code> soit terminée pour reprendre l'exécution de <code>example</code>.</p>
 <p>Pour ce faire, nous allons tirer parti d'une particularité des coroutines que nous avons découverte <a href="https://zestedesavoir.com/articles/232/la-puissance-cachee-des-coroutines/">dans cet article</a> : il est possible d'échanger des messages avec une coroutine en cours d'exécution.</p>
-<p>Pour bien comprendre ce qui va suivre, continuons, si vous le voulez bien, notre parallèle avec le fonctionnement d'un système d'exploitation. Lorsqu'un processus<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> <code>A</code> a besoin d'exécuter un programme <code>B</code> dans un processus concurrent, celui-ci réalise ce que l'on appelle un <em>appel système</em>, c'est-à-dire qu'il <em>envoie un message</em> à l'OS pour lui demander de bien vouloir lancer le nouveau programme <code>B</code>.<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a> Dans la pratique, cet <em>appel système</em> ressemble à s'y méprendre à n'importe quel appel de fonction. L'idée-clé, c'est que le processus peut <em>communiquer</em> avec le noyau du système d'exploitation en échangeant des <em>messages</em> avec lui.</p>
+<p>Pour bien comprendre ce qui va suivre, continuons, si vous le voulez bien, notre parallèle avec le fonctionnement d'un système d'exploitation. Lorsqu'un processus<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> <code>A</code> a besoin d'exécuter un programme <code>B</code> dans un processus concurrent, celui-ci réalise ce que l'on appelle un <em>appel système</em>, c'est-à-dire qu'il <em>envoie un message</em> à l'OS pour lui demander de bien vouloir lancer le nouveau programme <code>B</code>.<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a> Dans la pratique, cet <em>appel système</em> ressemble à s'y méprendre à n'importe quel appel de fonction. <strong>L'idée-clé, c'est que le processus peut <em>communiquer</em> avec le noyau du système d'exploitation en échangeant des <em>messages</em> avec lui.</strong></p>
 <p>Nous allons maintenant transposer cette notion à notre cas : nous voulons réussir à faire communiquer la boucle événementielle avec les coroutines qu'elle exécute grâce à des <em>messages</em>.</p>
 <p>Rappelons rapidement que l'on peut envoyer une donnée à une coroutine au moment où celle-ci se suspend, en utilisant la méthode <code>send</code> des coroutines :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> receiver():
@@ -370,11 +371,9 @@ received: <span class="st">&#39;bacon&#39;</span></code></pre>
 ...
 &gt;&gt;&gt; coro = requester()
 &gt;&gt;&gt; coro.send(<span class="ot">None</span>)  <span class="co"># On lance la coroutine</span>
-<span class="co">&#39;REQUÊTE&#39;</span>
-&gt;&gt;&gt; <span class="co"># La coroutine vient de nous envoyer un message.</span>
-... <span class="co"># On lui répond.</span>
-...
-&gt;&gt;&gt; coro.send(<span class="st">&#39;RÉPONSE&#39;</span>)
+<span class="co">&#39;REQUÊTE&#39;</span></code></pre>
+<p>La coroutine vient de nous envoyer un message. Répondons-lui.</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; coro.send(<span class="st">&#39;RÉPONSE&#39;</span>)
 data: <span class="st">&#39;RÉPONSE&#39;</span></code></pre>
 <p>Comme vous le constatez, la syntaxe de Python rend assez intuitif le fait que notre coroutine peut envoyer des requêtes à son environnement d'exécution, et se suspendre jusqu'à ce qu'on lui envoie le résultat de cette requête.</p>
 <p>Pour que ces messages soient transmis par notre classe <code>Task</code> du premier exemple, nous devons l'accomoder un petit peu :</p>
@@ -472,11 +471,9 @@ Tâche <span class="st">&#39;subtask&#39;</span>
 (subtask)
 (example)
 (subtask)
-&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
-&gt;&gt;&gt; <span class="co"># L&#39;exécution s&#39;arrête avec la fin de la coroutine &#39;example&#39;</span>
-... <span class="co"># Vidons ce qu&#39;il reste dans la boucle événementielle :</span>
-...
-&gt;&gt;&gt; event_loop.run_until_empty()
+&lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>L'exécution s'arrête avec la fin de la coroutine <code>example</code>, mais la coroutine <code>subtask</code>, elle, n'a pas terminé. Elle est encore suspendue dans la boucle, à l'état de zombie alors que le reste du programme est terminé. Vidons ce qu'il reste dans la boucle événementielle :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop.run_until_empty()
 (subtask)
 (subtask)
 &lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
@@ -602,12 +599,7 @@ bacon
 <li>Le second contient les tâches qui ont été annulées ou ont quitté sur une erreur.</li>
 </ul>
 <p>C'est cette fonction que nous allons implémenter maintenant, parce qu'il serait vraiment dommage de se passer de sa souplesse d'utilisation !</p>
-<p>En fait, le plus difficile dans cette fonction est surtout sa partie cosmétique. Pour avoir un comportement souple, il faut gérer le cas où les tâches passées à cette fonction :</p>
-<ul>
-<li>Sont des coroutines et non des instances de la classe <code>Task</code>,</li>
-<li>N'ont pas encore été programmées pour être exécutées par la boucle,</li>
-<li>Sont déjà en train de s'exécuter.</li>
-</ul>
+<p>En fait, le plus difficile dans cette fonction est surtout sa partie cosmétique. Pour avoir un comportement souple, il faut gérer le cas où les tâches passées à cette fonction sont des coroutines qui n'ont pas encore été lancées, ou bien des instances de la classe <code>Task</code> que la boucle événementielle aurait préalablement créées pour programmer leur exécution.</p>
 <p>Voilà ce que cela peut donner :</p>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> wait(tasks):
     <span class="co"># On commence par séparer les tâches en cours d&#39;exécution des autres</span>
