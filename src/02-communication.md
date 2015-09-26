@@ -17,11 +17,16 @@ définir un modèle d'exécution concurrent.
 
 Cependant, dans la pratique, on ne devrait pas avoir à manipuler directement la
 boucle pour réaliser quelque chose d'aussi simple que le lancement d'une tâche
-parallèle. Si l'on se réfère aux autres modes de concurrence :
+parallèle. En fait, **nos classes `Loop` et `Task` sont l'implémentation à bas
+niveau d'un petit framework asynchrone**, le programmeur ne devrait jamais
+avoir à y toucher à part pour lancer le programme asynchrone qu'il a écrit dans
+des coroutines.
+
+Si l'on se réfère aux autres modes de concurrence :
 
 * On peut lancer un *thread* et attendre la fin de l'exécution de celui-ci
   depuis n'importe quel *thread* en cours d'exécution.
-* On peut créer, attendre ou arrêter un processus fils depuis n'importe quel
+* On peut créer, attendre ou arrêter un processus depuis n'importe quel
   processus en cours d'exécution.
 
 Qu'il s'agisse de *threads* ou de processus, ces actions ne requièrent à aucun
@@ -31,10 +36,9 @@ d'exploitation (OS).[^scheduler]
 [^scheduler]: D'ailleurs, le noyau de l'OS est justement là pour vous empêcher
 de toucher vous-même à l'ordonnanceur !
 
-Par extension, **on devrait pouvoir lancer, attendre la fin de l'exécution, ou
-annuler une « sous-coroutine » depuis n'importe quelle coroutine en cours
-d'exécution**, sans avoir à appeler la méthode `schedule()` ni même toucher
-directement à la boucle événementielle.
+De façon analogue, **on devrait pouvoir lancer, attendre la fin de l'exécution,
+ou annuler une coroutine depuis n'importe quelle coroutine en cours
+d'exécution**, sans avoir à toucher directement à la boucle événementielle.
 
 Commençons par chercher le moyen de faire appel à une coroutine depuis une
 tâche en cours d'exécution. Rappelons d'abord que la syntaxe `yield from`
@@ -98,8 +102,8 @@ concurrent, celui-ci réalise ce que l'on appelle un *appel système*,
 c'est-à-dire qu'il *envoie un message* à l'OS pour lui demander de bien vouloir
 lancer le nouveau programme `B`.[^syscall] Dans la pratique, cet *appel
 système* ressemble à s'y méprendre à n'importe quel appel de fonction.
-L'idée-clé, c'est que le processus peut *communiquer* avec le noyau du système
-d'exploitation en échangeant des *messages* avec lui.
+**L'idée-clé, c'est que le processus peut *communiquer* avec le noyau du système
+d'exploitation en échangeant des *messages* avec lui.**
 
 [^process]: Un *processus* peut être vu comme **un programme en cours
 d'exécution**.
@@ -161,9 +165,11 @@ On peut donc parfaitement imaginer simuler un appel système :
 >>> coro = requester()
 >>> coro.send(None)  # On lance la coroutine
 'REQUÊTE'
->>> # La coroutine vient de nous envoyer un message.
-... # On lui répond.
-...
+```
+
+La coroutine vient de nous envoyer un message. Répondons-lui.
+
+```python
 >>> coro.send('RÉPONSE')
 data: 'RÉPONSE'
 ```
@@ -314,14 +320,18 @@ Tâche 'subtask'
 (example)
 (subtask)
 <Task 'example' [FINISHED] (None)>
->>> # L'exécution s'arrête avec la fin de la coroutine 'example'
-... # Vidons ce qu'il reste dans la boucle événementielle :
-...
+```
+
+L'exécution s'arrête avec la fin de la coroutine `example`, mais la coroutine
+`subtask`, elle, n'a pas terminé. Elle est encore suspendue dans la boucle, à
+l'état de zombie alors que le reste du programme est terminé. Vidons ce qu'il
+reste dans la boucle événementielle :
+
+```python
 >>> event_loop.run_until_empty()
 (subtask)
 (subtask)
 <Task 'subtask' [FINISHED] (None)>
-
 ```
 
 **Que faire si nous ne voulons pas qu'une coroutine quitte avant une
