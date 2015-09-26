@@ -87,11 +87,9 @@ vraiment dommage de se passer de sa souplesse d'utilisation !
 
 En fait, le plus difficile dans cette fonction est surtout sa partie
 cosmétique. Pour avoir un comportement souple, il faut gérer le cas où les
-tâches passées à cette fonction :
-
-* Sont des coroutines et non des instances de la classe `Task`,
-* N'ont pas encore été programmées pour être exécutées par la boucle,
-* Sont déjà en train de s'exécuter.
+tâches passées à cette fonction sont des coroutines qui n'ont pas encore été
+lancées, ou bien des instances de la classe `Task` que la boucle événementielle
+aurait préalablement créées pour programmer leur exécution.
 
 Voilà ce que cela peut donner :
 
