@@ -680,7 +680,99 @@ En attente de la fin de <span class="st">&#39;subtask&#39;</span>
 &lt;Task <span class="st">&#39;subtask&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
 Ça y est, je peux quitter
 &lt;Task <span class="st">&#39;example&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
-<p>Parfait. Nous venons d'implémenter notre première coroutine <em>d'attente asynchrone</em>. Celle-ci permet d'endormir une tâche pour ne la réveiller que lorsqu'une ou plusieurs autres tâches auront fini de s'exécuter. S'il y avait une seule chose à retenir de la programmation asynchrone, c'est bien ce mécanisme. C'est dans le fait de pouvoir dire à une boucle événementielle : « je fais une pause, réveille-moi quand il se sera passé quelque chose d'intéressant », que réside tout l'intérêt de ce modèle d'exécution. Et ce genre d'attente est vraiment très fréquent en informatique !</p>
+<p>Parfait. Nous venons d'implémenter notre première coroutine <em>d'attente asynchrone</em>. Celle-ci permet d'endormir une tâche pour ne la réveiller que lorsqu'une ou plusieurs autres tâches auront fini de s'exécuter. S'il y avait une seule chose à retenir de la programmation asynchrone, c'est bien ce mécanisme. C'est dans le fait de pouvoir dire, de façon tout à fait explicite : « je n'ai rien à faire pour le moment, réveillez-moi quand il se sera passé quelque chose d'intéressant », que réside tout l'intérêt de ce modèle d'exécution. Et ce genre d'attente est vraiment très fréquent en informatique !</p>
+<p>Dans cet article, nous allons nous contenter de <em>simuler</em> ces tâches. Pour ce faire, il suffit de nous doter d'une coroutine d'endormissement que nous appellerons <code>async_sleep</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="co"># Nous utilisons les classes datetime et timedelta de la bibliothèque standard</span>
+<span class="co"># La première représente une date (précise), la seconde une durée.</span>
+<span class="ch">from</span> datetime <span class="ch">import</span> datetime, timedelta
+
+<span class="kw">def</span> async_sleep(secs):
+
+    <span class="co"># On calcule l&#39;heure à laquelle on doit se réveiller</span>
+    wakeup = datetime.now() + timedelta(seconds=secs)
+
+    <span class="co"># On laisse la main tant que l&#39;heure de réveil n&#39;est pas passée</span>
+    <span class="kw">while</span> datetime.now() &lt; wakeup:
+        <span class="kw">yield</span></code></pre>
+<p>Vérifions rapidement qu'elle fonctionne :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="kw">def</span> sleep_test(secs, msg):
+...     <span class="kw">yield</span> <span class="ch">from</span> async_sleep(secs)
+...     <span class="dt">print</span>(msg)
+...
+&gt;&gt;&gt; event_loop.run_until_complete(
+...     wait([
+...         sleep_test(<span class="dv">3</span>, <span class="st">&#39;trois&#39;</span>),
+...         sleep_test(<span class="dv">1</span>, <span class="st">&#39;un&#39;</span>),
+...         sleep_test(<span class="dv">2</span>, <span class="st">&#39;deux&#39;</span>)
+...     ])
+... )
+un
+&lt;Task <span class="st">&#39;sleep_test&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+deux
+&lt;Task <span class="st">&#39;sleep_test&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+trois
+&lt;Task <span class="st">&#39;sleep_test&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+&lt;Task <span class="st">&#39;wait&#39;</span> [FINISHED] (...)&gt;</code></pre>
+<p>Bien, nous avons maintenant tout ce qu'il nous faut pour modéliser un système asynchrone, comme notre employé de <em>fast food</em>, par exemple. Pour ramener cet exemple à des durées plus aisées à vérifier dans un programme, nous prendrons les temps suivants :</p>
+<ul>
+<li>Préparation d'un soda : 1 seconde,</li>
+<li>Préparation d'un hamburger : 3 secondes,</li>
+<li>Préparation d'une portion de frites : 4 secondes.</li>
+</ul>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> get_soda():
+    <span class="dt">print</span>(<span class="st">&quot;Remplissage du gobelet de soda&quot;</span>)
+    <span class="kw">yield</span> <span class="ch">from</span> async_sleep(<span class="dv">1</span>)
+    <span class="dt">print</span>(<span class="st">&quot;Le soda est prêt&quot;</span>)
+
+<span class="kw">def</span> get_fries():
+    <span class="dt">print</span>(<span class="st">&quot;Démarrage de la cuisson des frites&quot;</span>)
+    <span class="kw">yield</span> <span class="ch">from</span> async_sleep(<span class="dv">4</span>)
+    <span class="dt">print</span>(<span class="st">&quot;Les frites sont prêtes&quot;</span>)
+
+<span class="kw">def</span> get_burger():
+    <span class="dt">print</span>(<span class="st">&quot;Commande du burger en cuisine&quot;</span>)
+    <span class="kw">yield</span> <span class="ch">from</span> async_sleep(<span class="dv">3</span>)
+    <span class="dt">print</span>(<span class="st">&quot;Le burger est prêt&quot;</span>)</code></pre>
+<p>Nous n'avons plus qu'à modéliser notre serveur. Commençons par le concevoir de façon séquentielle :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> serve():
+    start = datetime.now()
+    <span class="kw">yield</span> <span class="ch">from</span> get_soda()
+    <span class="kw">yield</span> <span class="ch">from</span> get_burger()
+    <span class="kw">yield</span> <span class="ch">from</span> get_fries()
+    <span class="dt">print</span>(<span class="st">&quot;Client servi en&quot;</span>, datetime.now() - start)</code></pre>
+<p>Lorsqu'il attend &quot;bêtement&quot; que tout soit prêt, le serveur met 8 secondes à servir un client.</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop.run_until_complete(serve())
+Remplissage du gobelet de soda
+Le soda est prêt
+Commande du burger en cuisine
+Le burger est prêt
+Démarrage de la cuisson des frites
+Les frites sont prêtes
+Client servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.000307</span>
+&lt;Task <span class="st">&#39;serve&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>Alors que si nous le modélisons de façon asynchrone…</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">def</span> async_serve():
+    start = datetime.now()
+    <span class="kw">yield</span> <span class="ch">from</span> wait([
+        get_soda(),
+        get_burger(),
+        get_fries()
+    ])
+    <span class="dt">print</span>(<span class="st">&quot;Client servi en&quot;</span>, datetime.now() - start)</code></pre>
+<p>… Le client est servi deux fois plus rapidement :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; event_loop.run_until_complete(async_serve())
+Commande du burger en cuisine
+Démarrage de la cuisson des frites
+Remplissage du gobelet de soda
+Le soda est prêt
+&lt;Task <span class="st">&#39;get_soda&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+Le burger est prêt
+&lt;Task <span class="st">&#39;get_burger&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+Les frites sont prêtes
+&lt;Task <span class="st">&#39;get_fries&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;
+Client servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.000214</span>
+&lt;Task <span class="st">&#39;async_serve&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
+<p>En modélisant cet exemple du début, nous venons de <em>construire</em> l'ensemble des outils et des primitives nécessaires à la programmation asynchrone. Cela dit, ce n'est encore que le début du voyage. Dans le prochain exemple, nous allons nous servir d'<code>asyncio</code> pour modéliser ce système d'une façon un peu plus réaliste, et découvrir que ce serveur de <em>fast food</em> représente un véritable problème d'optimisation d'un serveur asynchrone !</p>
 <h1 id="exemple-n4-modélisons-le-serveur-du-fast-food-avec-asyncio"><span class="header-section-number">5</span> Exemple n°4 : Modélisons le serveur du <em>fast food</em> avec <code>asyncio</code></h1>
 <p>Maintenant que nous avons compris comment fonctionne sa boucle événementielle, il est temps de nous mettre en jambes avec <code>asyncio</code> en l'utilisant pour modéliser l'exemple du début de cet article : l'employé de <em>fast food</em>.</p>
 <p>Voici d'abord à quoi ressemble le programme dans sa version synchrone.</p>
