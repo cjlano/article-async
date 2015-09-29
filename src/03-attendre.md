@@ -191,3 +191,136 @@ mécanisme. C'est dans le fait de pouvoir dire, de façon tout à fait explicite
 « je n'ai rien à faire pour le moment, réveillez-moi quand il se sera passé
 quelque chose d'intéressant », que réside tout l'intérêt de ce modèle
 d'exécution. Et ce genre d'attente est vraiment très fréquent en informatique !
+
+Dans cet article, nous allons nous contenter de *simuler* ces tâches. Pour ce
+faire, il suffit de nous doter d'une coroutine d'endormissement que nous
+appellerons `async_sleep` :
+
+```python
+# Nous utilisons les classes datetime et timedelta de la bibliothèque standard
+# La première représente une date (précise), la seconde une durée.
+from datetime import datetime, timedelta
+
+def async_sleep(secs):
+
+    # On calcule l'heure à laquelle on doit se réveiller
+    wakeup = datetime.now() + timedelta(seconds=secs)
+
+    # On laisse la main tant que l'heure de réveil n'est pas passée
+    while datetime.now() < wakeup:
+        yield
+```
+
+Vérifions rapidement qu'elle fonctionne :
+
+```python
+>>> def sleep_test(secs, msg):
+...     yield from async_sleep(secs)
+...     print(msg)
+...
+>>> event_loop.run_until_complete(
+...     wait([
+...         sleep_test(3, 'trois'),
+...         sleep_test(1, 'un'),
+...         sleep_test(2, 'deux')
+...     ])
+... )
+un
+<Task 'sleep_test' [FINISHED] (None)>
+deux
+<Task 'sleep_test' [FINISHED] (None)>
+trois
+<Task 'sleep_test' [FINISHED] (None)>
+<Task 'wait' [FINISHED] (...)>
+```
+
+Bien, nous avons maintenant tout ce qu'il nous faut pour modéliser un système
+asynchrone, comme notre employé de *fast food*, par exemple. Pour ramener cet
+exemple à des durées plus aisées à vérifier dans un programme, nous prendrons
+les temps suivants :
+
+* Préparation d'un soda : 1 seconde,
+* Préparation d'un hamburger : 3 secondes,
+* Préparation d'une portion de frites : 4 secondes.
+
+
+```python
+def get_soda():
+    print("Remplissage du gobelet de soda")
+    yield from async_sleep(1)
+    print("Le soda est prêt")
+
+def get_fries():
+    print("Démarrage de la cuisson des frites")
+    yield from async_sleep(4)
+    print("Les frites sont prêtes")
+
+def get_burger():
+    print("Commande du burger en cuisine")
+    yield from async_sleep(3)
+    print("Le burger est prêt")
+```
+
+Nous n'avons plus qu'à modéliser notre serveur. Commençons par le concevoir de
+façon séquentielle :
+
+```python
+def serve():
+    start = datetime.now()
+    yield from get_soda()
+    yield from get_burger()
+    yield from get_fries()
+    print("Client servi en", datetime.now() - start)
+```
+
+Lorsqu'il attend "bêtement" que tout soit prêt, le serveur met 8 secondes à
+servir un client.
+
+```python
+>>> event_loop.run_until_complete(serve())
+Remplissage du gobelet de soda
+Le soda est prêt
+Commande du burger en cuisine
+Le burger est prêt
+Démarrage de la cuisson des frites
+Les frites sont prêtes
+Client servi en 0:00:08.000307
+<Task 'serve' [FINISHED] (None)>
+```
+
+Alors que si nous le modélisons de façon asynchrone…
+
+```python
+def async_serve():
+    start = datetime.now()
+    yield from wait([
+        get_soda(),
+        get_burger(),
+        get_fries()
+    ])
+    print("Client servi en", datetime.now() - start)
+```
+
+… Le client est servi deux fois plus rapidement :
+
+```python
+>>> event_loop.run_until_complete(async_serve())
+Commande du burger en cuisine
+Démarrage de la cuisson des frites
+Remplissage du gobelet de soda
+Le soda est prêt
+<Task 'get_soda' [FINISHED] (None)>
+Le burger est prêt
+<Task 'get_burger' [FINISHED] (None)>
+Les frites sont prêtes
+<Task 'get_fries' [FINISHED] (None)>
+Client servi en 0:00:04.000214
+<Task 'async_serve' [FINISHED] (None)>
+```
+
+En modélisant cet exemple du début, nous venons de *construire* l'ensemble des
+outils et des primitives nécessaires à la programmation asynchrone. Cela dit,
+ce n'est encore que le début du voyage. Dans le prochain exemple, nous allons
+nous servir d'`asyncio` pour modéliser ce système d'une façon un peu plus
+réaliste, et découvrir que ce serveur de *fast food* représente un véritable
+problème d'optimisation d'un serveur asynchrone !
