@@ -774,117 +774,89 @@ Client servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class
 &lt;Task <span class="st">&#39;async_serve&#39;</span> [FINISHED] (<span class="ot">None</span>)&gt;</code></pre>
 <p>En modélisant cet exemple du début, nous venons de <em>construire</em> l'ensemble des outils et des primitives nécessaires à la programmation asynchrone. Cela dit, ce n'est encore que le début du voyage. Dans le prochain exemple, nous allons nous servir d'<code>asyncio</code> pour modéliser ce système d'une façon un peu plus réaliste, et découvrir que ce serveur de <em>fast food</em> représente un véritable problème d'optimisation d'un serveur asynchrone !</p>
 <h1 id="exemple-n4-modélisons-le-serveur-du-fast-food-avec-asyncio"><span class="header-section-number">5</span> Exemple n°4 : Modélisons le serveur du <em>fast food</em> avec <code>asyncio</code></h1>
-<p>Maintenant que nous avons compris comment fonctionne sa boucle événementielle, il est temps de nous mettre en jambes avec <code>asyncio</code> en l'utilisant pour modéliser l'exemple du début de cet article : l'employé de <em>fast food</em>.</p>
-<p>Voici d'abord à quoi ressemble le programme dans sa version synchrone.</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> time <span class="ch">import</span> sleep
-<span class="ch">from</span> datetime <span class="ch">import</span> datetime
-
-<span class="kw">def</span> get_burger(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Commande du burger pour &#39;{}&#39; en cuisine&quot;</span>.<span class="dt">format</span>(client))
-    sleep(<span class="dv">4</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Le burger de &#39;{}&#39; est prêt&quot;</span>.<span class="dt">format</span>(client))
-
-<span class="kw">def</span> get_fries(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Mettre des frites à cuire pour {}&quot;</span>.<span class="dt">format</span>(client))
-    sleep(<span class="dv">8</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Les frites de &#39;{}&#39; sont prêtes&quot;</span>.<span class="dt">format</span>(client))
-
-<span class="kw">def</span> get_soda(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Remplissage du gobelet de soda pour {}&quot;</span>.<span class="dt">format</span>(client))
-    sleep(<span class="dv">2</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Le soda de &#39;{}&#39; est prêt&quot;</span>.<span class="dt">format</span>(client))
-
-<span class="kw">def</span> serve(client):
-    <span class="dt">print</span>(<span class="st">&quot;Préparation de la commande de &#39;{}&#39;&quot;</span>.<span class="dt">format</span>(client))
-    start = datetime.now()
-    get_burger(client)
-    get_fries(client)
-    get_soda(client)
-    duration = datetime.now() - start
-    <span class="dt">print</span>(<span class="st">&quot;Commande de &#39;{}&#39; prête en {}&quot;</span>.<span class="dt">format</span>(client, duration))</code></pre>
-<p>Résultat : la commande est prête en 14 secondes.</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; serve(<span class="st">&#39;A&#39;</span>)
-Préparation de la commande de <span class="st">&#39;A&#39;</span>
-&gt; Commande du burger pour <span class="st">&#39;A&#39;</span> en cuisine
-&lt; Le burger de <span class="st">&#39;A&#39;</span> est prêt
-&gt; Mettre des frites à cuire pour A
-&lt; Les frites de <span class="st">&#39;A&#39;</span> sont prêtes
-&gt; Remplissage du gobelet de soda pour A
-&lt; Le soda de <span class="st">&#39;A&#39;</span> est prêt
-Commande de <span class="st">&#39;A&#39;</span> prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">14.015165</span></code></pre>
-<p>Il ne nous reste plus qu'à implémenter cet exemple avec <code>asyncio</code>. Le premier jet n'est pas très difficile : il faut juste penser à utiliser la coroutine <code>asyncio.sleep()</code> plutôt que <code>time.sleep()</code> pour que l'endormissement de la tâche ne soit pas bloquant.</p>
+<p>Maintenant que nous avons fait le tour de toutes les primitives qui permettent la programmation asynchrone, il est temps pour nous d'étudier un système asynchrone programmé avec <code>asyncio</code>. Afin d'éviter d'alourdir le propos dans cet exemples, nous nous contenterons de notre exemple <em>fil rouge</em> : l'employé de fast food, en nous promettant d'aborder des applications réseau réelles dans un article ultérieur.</p>
+<p>Commençons par implémenter celui-ci avec <code>asyncio</code>.</p>
+<p>En réalité, vous n'allez pas tellement être dépaysés puisque le framework standard reprend plus ou moins la même API que celle que nous avons développé dans les trois derniers exemples. Les seules différences sont que :</p>
+<ul>
+<li>Toutes les coroutines doivent être décorées par <code>@asyncio.coroutine</code>, ce qui permet notamment de créer des coroutines qui ne <code>yield</code>-ent jamais.</li>
+<li><code>wait()</code> devient <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait"><code>asyncio.wait()</code></a>.</li>
+<li><code>async_sleep()</code> devient <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.sleep"><code>asyncio.sleep()</code></a>.</li>
+<li>notre coroutine <code>ensure_future()</code> devient la <strong>fonction</strong> <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.ensure_future"><code>asyncio.ensure_future()</code></a>. Notez toutefois que cette fonction n'existe que depuis Python 3.4.4. Dans les versions antérieures, celle-ci s'appelle <code>asyncio.async()</code>, mais son nom a été déprécié au profit de <code>ensure_future()</code> afin de libérer le mot-clé <code>async</code> pour Python 3.5.</li>
+</ul>
 <pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> asyncio
 <span class="ch">from</span> datetime <span class="ch">import</span> datetime
 
 <span class="ot">@asyncio.coroutine</span>
-<span class="kw">def</span> get_burger(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Commande du burger pour {} en cuisine&quot;</span>.<span class="dt">format</span>(client))
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">4</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Le burger de {} est prêt&quot;</span>.<span class="dt">format</span>(client))
+<span class="kw">def</span> get_soda(client):
+    <span class="dt">print</span>(<span class="st">&quot;  &gt; Remplissage du soda pour {}&quot;</span>.<span class="dt">format</span>(client))
+    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">1</span>)
+    <span class="dt">print</span>(<span class="st">&quot;  &lt; Le soda de {} est prêt&quot;</span>.<span class="dt">format</span>(client))
 
 <span class="ot">@asyncio.coroutine</span>
 <span class="kw">def</span> get_fries(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Mettre des frites à cuire pour {}&quot;</span>.<span class="dt">format</span>(client))
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">8</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Les frites de {} sont prêtes&quot;</span>.<span class="dt">format</span>(client))
+    <span class="dt">print</span>(<span class="st">&quot;    &gt; Démarrage de la cuisson des frites pour {}&quot;</span>.<span class="dt">format</span>(client))
+    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">4</span>)
+    <span class="dt">print</span>(<span class="st">&quot;    &lt; Les frites de {} sont prêtes&quot;</span>.<span class="dt">format</span>(client))
 
 <span class="ot">@asyncio.coroutine</span>
-<span class="kw">def</span> get_soda(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Remplissage du gobelet de soda pour {}&quot;</span>.<span class="dt">format</span>(client))
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">2</span>)
-    <span class="dt">print</span>(<span class="st">&quot;&lt; Le soda de {} est prêt&quot;</span>.<span class="dt">format</span>(client))
+<span class="kw">def</span> get_burger(client):
+    <span class="dt">print</span>(<span class="st">&quot;    &gt; Commande du burger en cuisine pour {}&quot;</span>.<span class="dt">format</span>(client))
+    <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">3</span>)
+    <span class="dt">print</span>(<span class="st">&quot;    &lt; Le burger de {} est prêt&quot;</span>.<span class="dt">format</span>(client))
 
 <span class="ot">@asyncio.coroutine</span>
 <span class="kw">def</span> serve(client):
-    <span class="dt">print</span>(<span class="st">&quot;Préparation de la commande de {}&quot;</span>.<span class="dt">format</span>(client))
-    start = datetime.now()
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.wait([
-        get_burger(client),
-        get_fries(client),
-        get_soda(client),
-    ])
-    duration = datetime.now() - start
-    <span class="dt">print</span>(<span class="st">&quot;Commande de {} prête en {}&quot;</span>.<span class="dt">format</span>(client, duration))</code></pre>
-<p>Remarquez que nous avons décoré toutes nos coroutines avec le décorateur <code>@asyncio.coroutine</code> : il s'agit d'une convention pour distinguer les fonctions synchrones des coroutines asynchrones dans du code utilisant <code>asyncio</code>. En dehors de l'indice visuel, ce décorateur permet de s'assurer qu'une fonction donnée sera considérée par <code>asyncio</code> comme une coroutine, même si celle-ci ne <code>yield</code> jamais.</p>
-<p>Exécutons-le maintenant :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; <span class="ch">import</span> asyncio
-&gt;&gt;&gt; loop = asyncio.get_event_loop()
-&gt;&gt;&gt; loop.run_until_complete(serve(<span class="st">&#39;A&#39;</span>))
-Préparation de la commande de A
-&gt; Commande du burger pour A en cuisine
-&gt; Mettre des frites à cuire pour A
-&gt; Remplissage du gobelet de soda pour A
-&lt; Le soda de A est prêt
-&lt; Le burger de A est prêt
-&lt; Les frites de A sont prêtes
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.005791</span></code></pre>
-<p>Nous sommes passés de 14 secondes à 8 secondes.</p>
-<p>Et pour servir deux clients à la fois ?</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(asyncio.wait([serve(<span class="st">&#39;A&#39;</span>), serve(<span class="st">&#39;B&#39;</span>)]))
-Préparation de la commande de B
-Préparation de la commande de A
-&gt; Mettre des frites à cuire pour B
-&gt; Commande du burger pour B en cuisine
-&gt; Remplissage du gobelet de soda pour B
-&gt; Remplissage du gobelet de soda pour A
-&gt; Commande du burger pour A en cuisine
-&gt; Mettre des frites à cuire pour A
-&lt; Le soda de B est prêt
-&lt; Le soda de A est prêt
-&lt; Le burger de B est prêt
-&lt; Le burger de A est prêt
-&lt; Les frites de B sont prêtes
-&lt; Les frites de A sont prêtes
-Commande de B prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.005967</span>
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.005940</span></code></pre>
-<p>Les deux ont mis tout autant de temps, néanmoins cet affichage ne semble pas très réaliste.</p>
-<p>En effet :</p>
+    <span class="dt">print</span>(<span class="st">&quot;=&gt; Commande passée par {}&quot;</span>.<span class="dt">format</span>(client))
+    start_time = datetime.now()
+    <span class="kw">yield</span> <span class="ch">from</span> asyncio.wait(
+        [
+            get_soda(client),
+            get_fries(client),
+            get_burger(client)
+        ]
+    )
+    total = datetime.now() - start_time
+    <span class="dt">print</span>(<span class="st">&quot;&lt;= {} servi en {}&quot;</span>.<span class="dt">format</span>(client, datetime.now() - start_time))</code></pre>
+<p>Rien de franchement dépaysant. Pour exécuter ce code, là aussi l'API est sensiblement la même que notre classe <code>Loop</code> :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = asyncio.get_event_loop()
+&gt;&gt;&gt; loop.run_until_complete(serve(<span class="st">&quot;A&quot;</span>))
+=&gt; Commande passée par A
+    &gt; Remplissage du soda pour A
+    &gt; Commande du burger en cuisine pour A
+    &gt; Démarrage de la cuisson des frites pour A
+    &lt; Le soda de A est prêt
+    &lt; Le burger de A est prêt
+    &lt; Les frites de A sont prêtes
+&lt;= A servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003105</span></code></pre>
+<p>Pas d'erreur de syntaxe, le code fonctionne. On peut commencer à travailler.</p>
+<p>Remarquons dans un premier temps que notre serveur <strong>manque de réalisme</strong>. En effet, si nous lui demandons de servir deux clients en même temps, voilà ce qui se produit :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(
+...     asyncio.wait([serve(<span class="st">&quot;A&quot;</span>), serve(<span class="st">&quot;B&quot;</span>)])
+... )
+=&gt; Commande passée par A
+=&gt; Commande passée par B
+    &gt; Remplissage du soda pour A
+    &gt; Commande du burger en cuisine pour A
+    &gt; Démarrage de la cuisson des frites pour A
+    &gt; Démarrage de la cuisson des frites pour B
+    &gt; Remplissage du soda pour B
+    &gt; Commande du burger en cuisine pour B
+    &lt; Le soda de A est prêt
+    &lt; Le soda de B est prêt
+    &lt; Le burger de A est prêt
+    &lt; Le burger de B est prêt
+    &lt; Les frites de A sont prêtes
+    &lt; Les frites de B sont prêtes
+&lt;= A servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.002609</span>
+&lt;= B servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.002792</span></code></pre>
+<p>Les deux commandes ont été servies simultanément, de la même façon. La préparation des trois ingrédients s'est chevauchée, comme s'il était possible de faire couler une infinité de sodas, de cuire une infinité de frites <em>à la demande</em> pour les clients, et de préparer une infinité de hamburgers en parallèle.</p>
+<p>En bref : <strong>notre modélisation manque de contraintes</strong>.</p>
+<p>Pour améliorer ce programme, nous allons modéliser les contraintes suivantes :</p>
 <ul>
-<li>la machine à soda ne peut faire couler qu'un seul soda à la fois, or ici les deux sodas ont été préparés simultanément.</li>
-<li>la cuisine ne comporte que 3 cuisiniers, donc on ne peut avoir au maximum que 3 hamburgers en cours de préparation à un instant donné.</li>
-<li>le bac à frites fait cuire en général 5 portions de frites en même temps, or ici il a été utilisé deux fois en parallèle pour produire uniquement deux portions de frites.</li>
+<li>La machine à sodas ne peut faire couler <strong>qu'un seul soda à la fois</strong>. Dans une application réelle, cela reviendrait à <em>requêter un service synchrone qui ne supporte pas les accès concurrents</em> ;</li>
+<li>Il n'y a que 3 cuisiniers dans le restaurant, donc <strong>on ne peut pas préparer plus de trois hamburgers en même temps</strong>. Dans la réalité, cela revient à <em>requêter un service synchrone dont trois instances tournent en parallèle</em> ;</li>
+<li>Le bac à frites s'utilise en faisant cuire 5 portions de frites d'un coup, pour servir ensuite 5 clients instantanément. Dans la réalité, cela revient, à peu de choses près, à <em>simuler un service synchrone qui fonctionne avec un cache</em>.</li>
 </ul>
-<p>Comment modéliser ces contraintes ?</p>
 <p>La machine à soda est certainement la plus simple. Il est possible de verrouiller une ressource de manière à ce qu'une seule tâche puisse y accéder à la fois, en utilisant ce que l'on appelle un <strong>verrou</strong> (<code>asyncio.Lock</code>). Plaçons un verrou sur notre machine à soda :</p>
 <pre class="sourceCode python"><code class="sourceCode python">SODA_LOCK = asyncio.Lock()
 
@@ -893,24 +865,23 @@ Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<sp
     <span class="co"># Acquisition du verrou</span>
     <span class="kw">with</span> (<span class="kw">yield</span> <span class="ch">from</span> SODA_LOCK):
         <span class="co"># Une seule tâche à la fois peut exécuter ce bloc</span>
-        <span class="dt">print</span>(<span class="st">&quot;&gt; Remplissage du gobelet de soda pour {}&quot;</span>.<span class="dt">format</span>(client))
-        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">2</span>)
-        <span class="dt">print</span>(<span class="st">&quot;&lt; Le soda de {} est prêt&quot;</span>.<span class="dt">format</span>(client))</code></pre>
+        <span class="dt">print</span>(<span class="st">&quot;    &gt; Remplissage du soda pour {}&quot;</span>.<span class="dt">format</span>(client))
+        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">1</span>)
+        <span class="dt">print</span>(<span class="st">&quot;    &lt; Le soda de {} est prêt&quot;</span>.<span class="dt">format</span>(client))</code></pre>
 <p>Le <code>with (yield from SODA_LOCK)</code> signifie que lorsque le serveur arrive à la machine à soda pour y déposer un gobelet :</p>
 <ul>
 <li>soit la machine est libre (déverrouillée), auquel cas il peut la verrouiller pour l'utiliser immédiatement,</li>
-<li>soit celle-ci est déjà en train de fonctionner, auquel cas il attend que le soda en cours de préparation soit prêt avant de se servir de la machine.</li>
+<li>soit celle-ci est déjà en train de fonctionner, auquel cas il attend que le soda en cours de préparation soit prêt avant de verrouiller la machine à son tour.</li>
 </ul>
 <p>Passons à la cuisine. Seuls 3 burgers peuvent être fabriqués en même temps. Cela peut se modéliser en utilisant un <strong>sémaphore</strong> (<code>asyncio.Semaphore</code>), qui est une sorte de &quot;verrou multiple&quot;. On l'utilise pour qu'au plus N tâches puissent exécuter un morceau de code à un instant donné.</p>
 <pre class="sourceCode python"><code class="sourceCode python">BURGER_SEM = asyncio.Semaphore(<span class="dv">3</span>)
 
 <span class="ot">@asyncio.coroutine</span>
 <span class="kw">def</span> get_burger(client):
-    <span class="dt">print</span>(<span class="st">&quot;&gt; Commande du burger pour {} en cuisine&quot;</span>.<span class="dt">format</span>(client))
+    <span class="dt">print</span>(<span class="st">&quot;    &gt; Commande du burger en cuisine pour {}&quot;</span>.<span class="dt">format</span>(client))
     <span class="kw">with</span> (<span class="kw">yield</span> <span class="ch">from</span> BURGER_SEM):
-        <span class="dt">print</span>(<span class="st">&quot;* Le burger de {} est en préparation&quot;</span>.<span class="dt">format</span>(client))
-        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">4</span>)
-        <span class="dt">print</span>(<span class="st">&quot;&lt; Le burger de {} est prêt&quot;</span>.<span class="dt">format</span>(client))</code></pre>
+        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">3</span>)
+        <span class="dt">print</span>(<span class="st">&quot;    &lt; Le burger de {} est prêt&quot;</span>.<span class="dt">format</span>(client))</code></pre>
 <p>Le <code>with (yield from BURGER_SEM)</code> veut dire que lorsqu'une commande est passée en cuisine :</p>
 <ul>
 <li>soit il y a un cuisinier libre, et celui-ci commence immédiatement à préparer le hamburger,</li>
@@ -923,144 +894,135 @@ Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<sp
 </ul>
 <p>Mais attention, si les frites sont déjà en cours de préparation, il est inutile de lancer une nouvelle fournée !</p>
 <p>Voici comment on pourrait s'y prendre :</p>
-<pre class="sourceCode python"><code class="sourceCode python">FRIES_PARTS = <span class="dv">0</span>
+<pre class="sourceCode python"><code class="sourceCode python">FRIES_COUNTER = <span class="dv">0</span>
 FRIES_LOCK = asyncio.Lock()
 
 <span class="ot">@asyncio.coroutine</span>
 <span class="kw">def</span> get_fries(client):
-    <span class="kw">global</span> FRIES_PARTS
+    <span class="kw">global</span> FRIES_COUNTER
     <span class="kw">with</span> (<span class="kw">yield</span> <span class="ch">from</span> FRIES_LOCK):
-        <span class="dt">print</span>(
-            <span class="st">&quot;&gt; Récupération d&#39;une portion de frites pour {}&quot;</span>.<span class="dt">format</span>(client)
-        )
-        <span class="kw">if</span> FRIES_PARTS == <span class="dv">0</span>:
-            <span class="dt">print</span>(<span class="st">&quot;* Mettre des frites à cuire&quot;</span>)
-            <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">8</span>)
-            FRIES_PARTS = <span class="dv">5</span>
-            <span class="dt">print</span>(<span class="st">&quot;* Les frites sont prêtes&quot;</span>))
-        FRIES_PARTS -= <span class="dv">1</span>
-        <span class="dt">print</span>(<span class="st">&quot;&lt; Les frites de {} sont prêtes&quot;</span>.<span class="dt">format</span>(client))</code></pre>
+        <span class="dt">print</span>(<span class="st">&quot;    &gt; Récupération des frites pour {}&quot;</span>.<span class="dt">format</span>(client))
+        <span class="kw">if</span> FRIES_COUNTER == <span class="dv">0</span>:
+            <span class="dt">print</span>(<span class="st">&quot;   ** Démarrage de la cuisson des frites&quot;</span>)
+            <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">4</span>)
+            FRIES_COUNTER = <span class="dv">5</span>
+            <span class="dt">print</span>(<span class="st">&quot;   ** Les frites sont cuites&quot;</span>)
+        FRIES_COUNTER -= <span class="dv">1</span>
+        <span class="dt">print</span>(<span class="st">&quot;    &lt; Les frites de {} sont prêtes&quot;</span>.<span class="dt">format</span>(client))</code></pre>
 <p>Dans cet exemple, on place un verrou sur le bac à frites pour qu'un seul serveur puisse y accéder à la fois. Lorsqu'un serveur arrive devant le bac à frites, soit celui-ci contient encore des portions de frites, auquel cas il en récupère une et retourne immédiatement, soit le bac est vide, donc le serveur met des frites à cuire avant de pouvoir en récupérer une portion.</p>
-<p>Voyons voir ce que cela donne à l'exécution :</p>
+<p>À l'exécution :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(asyncio.wait([serve(<span class="st">&#39;A&#39;</span>), serve(<span class="st">&#39;B&#39;</span>)]))
-Préparation de la commande de B
-Préparation de la commande de A
-&gt; Remplissage du gobelet de soda pour B
-&gt; Commande du burger pour B en cuisine
-* Le burger de B est en préparation
-&gt; Récupération d<span class="st">&#39;une portion de frites pour B</span>
-<span class="st">* Mettre des frites à cuire</span>
-<span class="st">&gt; Commande du burger pour A en cuisine</span>
-<span class="st">* Le burger de A est en préparation</span>
-<span class="st">&lt; Le soda de B est prêt</span>
-<span class="st">&gt; Remplissage du gobelet de soda pour A</span>
-<span class="st">&lt; Le burger de B est prêt</span>
-<span class="st">&lt; Le burger de A est prêt</span>
-<span class="st">&lt; Le soda de A est prêt</span>
-<span class="st">* Les frites sont prêtes</span>
-<span class="st">&lt; Les frites de B sont prêtes</span>
-<span class="st">&gt; Récupération d&#39;</span>une portion de frites pour A
-&lt; Les frites de A sont prêtes
-Commande de B prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.006742</span>
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.006859</span>
-({Task(&lt;serve&gt;)&lt;result=<span class="ot">None</span>&gt;, Task(&lt;serve&gt;)&lt;result=<span class="ot">None</span>&gt;}, <span class="dt">set</span>())</code></pre>
-<p>Et voilà. Nos deux tâches prennent le même temps, mais s'arrangent pour ne pas accéder simultanément à la machine à sodas ni au bac à frites.</p>
+=&gt; Commande passée par B
+=&gt; Commande passée par A
+    &gt; Remplissage du soda pour B
+    &gt; Récupération des frites pour B
+   ** Démarrage de la cuisson des frites
+    &gt; Commande du burger en cuisine pour B
+    &gt; Commande du burger en cuisine pour A
+    &lt; Le soda de B est prêt
+    &gt; Remplissage du soda pour A
+    &lt; Le soda de A est prêt
+    &lt; Le burger de B est prêt
+    &lt; Le burger de A est prêt
+   ** Les frites sont cuites
+    &lt; Les frites de B sont prêtes
+    &gt; Récupération des frites pour A
+    &lt; Les frites de A sont prêtes
+&lt;= B servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003111</span>
+&lt;= A servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003093</span></code></pre>
+<p>Nos deux tâches prennent toujours le même temps à s'exécuter, mais s'arrangent pour ne pas accéder simultanément à la machine à sodas ni au bac à frites.</p>
 <p>Voyons maintenant ce que cela donne si 10 clients passent commande en même temps :</p>
 <pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(
 ...     asyncio.wait([serve(clt) <span class="kw">for</span> clt in <span class="st">&#39;ABCDEFGHIJ&#39;</span>])
 ... )
 ...
-<span class="co"># ...</span>
-Commande de C prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.009554</span>
-Commande de G prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.009934</span>
-Commande de B prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.010281</span>
-Commande de D prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.014250</span>
-Commande de H prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">10.017237</span>
-Commande de I prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">16.014170</span>
-Commande de E prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">16.014511</span>
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">16.022411</span>
-Commande de J prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">18.023141</span>
-Commande de F prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">20.026096</span></code></pre>
-<p>On se rend compte que les performances de notre serveur de fast-food se dégradent plus ou moins, même si on est toujours loin des 140 secondes que le serveur aurait pris s'il avait traité toutes ces commandes de façon synchrone.</p>
-<p>Cela dit, il est plutôt rare que les clients passent leurs commandes tous en même temps. Une modélisation plus proche de la réalité serait que ces dix commandes arrivent à deux secondes d'intervalle :</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="ot">@asyncio.coroutine</span>
-<span class="kw">def</span> test():
-    tasks = []
-    <span class="kw">for</span> client in <span class="st">&#39;ABCDEFGHIJ&#39;</span>:
-        <span class="co"># appel équivalent à notre fonction `launch()`</span>
-        task = asyncio.async(serve(client))
-        tasks.append(task)
-        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">2</span>)
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.wait(tasks)</code></pre>
-<p>Dans ces conditions, les temps d'attente individuels de chaque client sont assez largement réduits :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = asyncio.get_event_loop()
-&gt;&gt;&gt; loop = asyncio.run_until_complete(test())
-Préparation de la commande de A
-Préparation de la commande de B
-Préparation de la commande de C
-Préparation de la commande de D
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.004599</span>
-Commande de B prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.002353</span>
-Préparation de la commande de E
-Commande de C prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.002907</span>
-Préparation de la commande de F
-Commande de D prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004343</span>
-Préparation de la commande de G
-Commande de E prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004445</span>
-Préparation de la commande de H
-Préparation de la commande de I
-Commande de F prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.005227</span>
-Commande de G prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.005087</span>
-Préparation de la commande de J
-Commande de H prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003595</span>
-Commande de I prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003620</span>
-Commande de J prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004184</span></code></pre>
-<p>À raison d'un client toutes les deux secondes, notre serveur est capable de traiter des commandes avec un temps moyen de 5.2 secondes, le maximum étant 8 secondes et le minimum à 4 secondes.</p>
-<p>Et si nous <em>stressions</em> un peu notre serveur et qu'on lui passait une commande par seconde ?</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="ot">@asyncio.coroutine</span>
-<span class="kw">def</span> test():
-    tasks = []
-    <span class="kw">for</span> client in <span class="st">&#39;ABCDEFGHIJ&#39;</span>:
-        task = asyncio.async(serve(client))
-        tasks.append(task)
-        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(<span class="dv">1</span>)
-    <span class="kw">yield</span> <span class="ch">from</span> asyncio.wait(tasks)</code></pre>
-<p>Comme prévu, celui-ci, sous la pression, est un peu moins efficace à cause des contraintes des différentes machines qu'il utilise, même si l'on reste tout à fait loin de l'inefficacité pathologique de la version synchrone :</p>
-<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop = asyncio.get_event_loop()
-&gt;&gt;&gt; loop.run_until_complete(test())
-Préparation de la commande de A
-Préparation de la commande de B
-Préparation de la commande de C
-Préparation de la commande de D
-Préparation de la commande de E
-Préparation de la commande de F
-Préparation de la commande de G
-Préparation de la commande de H
-Commande de A prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.003498</span>
-Commande de B prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">07.001989</span>
-Commande de C prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.000267</span>
-Commande de D prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">05.004673</span>
-Préparation de la commande de I
-Préparation de la commande de J
-Commande de E prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.005059</span>
-Commande de F prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">11.002432</span>
-Commande de G prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">10.002475</span>
-Commande de H prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">09.000938</span>
-Commande de I prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">10.002911</span>
-Commande de J prête en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">11.004703</span></code></pre>
-<p>On peut se demander à quel endroit le service est ralenti quand on sert 1 client par seconde :</p>
+<span class="co"># ... sortie filtrée ...</span>
+&lt;= C servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004512</span>
+&lt;= D servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004378</span>
+&lt;= E servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004262</span>
+&lt;= F servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.008072</span>
+&lt;= A servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">06.008074</span>
+&lt;= G servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">08.006399</span>
+&lt;= H servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">09.009187</span>
+&lt;= B servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">09.009118</span>
+&lt;= I servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">09.015023</span>
+&lt;= J servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">12.011539</span></code></pre>
+<p>On se rend compte que les performances de notre serveur de fast-food se dégradent : certains clients attendent jusqu'à trois fois plus longtemps que les autres.</p>
+<p>Cela n'a rien de surprenant. En fait, les performances d'une application asynchrone ne se mesurent pas en <em>nombre de tâches traitées simultanément</em>, mais plutôt, comme n'importe quel serveur, en <em>nombre de tâches traitées dans le temps</em>. Il est évident que si 10 clients viennent manger dans un fast-food, il y a relativement peu de chances qu'ils arrivent tous en même temps : ils vont plutôt passer leur commande à raison d'une par seconde, par exemple.</p>
+<p>Par contre, il est très important de noter que c'est bien <em>le temps d'attente</em> individuel de chaque client qui compte pour mesurer les performances (la qualité) du service. Si un client attend trop longtemps, il ne sera pas satisfait, peu importe s'il est tout seul dans le restaurant ou que celui-ci est bondé.</p>
+<p>Pour ces raisons, il faut que nous ayons une idée des <strong>objectifs de performances</strong> de notre serveur, c'est-à-dire que nous fixions, comme but :</p>
 <ul>
-<li>S'agit-il de la machine à sodas, qui produit un soda toutes les 2 secondes ?</li>
-<li>S'agit-il du bac à frites, qui peut produire 5 portions en 8 secondes ?</li>
-<li>Ou bien s'agit-il de la cuisine, qui produit un hamburger en 4 secondes, mais reste limitée à trois cuisiniers ?</li>
+<li>un <em>temps d'attente maximal</em> à ne pas dépasser pour servir un client,</li>
+<li>un <em>volume</em> de requêtes à tenir par seconde.</li>
 </ul>
-<p>Les réponses à ces questions vous sont laissées en guise d'exercice. Vous pouvez essayer d'apporter les modifications suivantes au modèle, pour aider le gérant du restaurant à optimiser son service :</p>
+<p>Écrivons maintenant une coroutine pour tester les performances de notre serveur :</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="co"># La fonction ensure_future est définie à partir de Python 3.4.4</span>
+<span class="co"># Ce bloc la rend accessible pour toutes les versions de Python 3.4</span>
+<span class="kw">try</span>:
+    <span class="ch">from</span> asyncio <span class="ch">import</span> ensure_future
+<span class="kw">except</span> <span class="ot">ImportError</span>:
+    asyncio.ensure_future = asyncio.async
+
+<span class="ot">@asyncio.coroutine</span>
+<span class="kw">def</span> perf_test(nb_requests, period, timeout):
+    tasks = []
+    <span class="co"># On lance &#39;nb_requests&#39; commandes à &#39;period&#39; secondes d&#39;intervalle</span>
+    <span class="kw">for</span> idx in <span class="dt">range</span>(<span class="dv">1</span>, nb_requests + <span class="dv">1</span>):
+        client_name = <span class="st">&quot;client_{}&quot;</span>.<span class="dt">format</span>(idx)
+        tsk = asyncio.ensure_future(serve(client_name))
+        tasks.append(tsk)
+        <span class="kw">yield</span> <span class="ch">from</span> asyncio.sleep(period)
+
+    finished, _ = <span class="kw">yield</span> <span class="ch">from</span> asyncio.wait(tasks)
+    success = <span class="dt">set</span>()
+    <span class="kw">for</span> tsk in finished:
+        <span class="kw">if</span> tsk.result().seconds &lt; timeout:
+            success.add(tsk)
+
+    <span class="dt">print</span>(<span class="st">&quot;{}/{} clients satisfaits&quot;</span>.<span class="dt">format</span>(<span class="dt">len</span>(success), <span class="dt">len</span>(finished)))</code></pre>
+<p>Cette coroutine va lancer un certain nombre de commandes, régulièrement, et compter à la fin le nombre de commandes qui ont été honorées dans les temps.</p>
+<p>Essayons de lancer 10 commandes à 1 seconde d'intervalle, avec pour objectif que les clients soient servis en 5 secondes maximum :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(perf_test(<span class="dv">10</span>, <span class="dv">1</span>, <span class="dv">5</span>))
+<span class="co"># ... sortie filtrée ...</span>
+&lt;= client_1 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.004044</span>
+&lt;= client_2 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.002792</span>
+&lt;= client_3 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003338</span>
+&lt;= client_4 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003653</span>
+&lt;= client_5 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003815</span>
+&lt;= client_6 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.003746</span>
+&lt;= client_7 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003412</span>
+&lt;= client_8 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.002512</span>
+&lt;= client_9 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003409</span>
+&lt;= client_10 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.003622</span>
+<span class="dv">10</span>/<span class="dv">10</span> clients satisfaits</code></pre>
+<p>Ce test nous indique que notre serveur tient facilement une charge d'un client par seconde. Essayons de monter en charge en passant à deux clients par seconde :</p>
+<pre class="sourceCode python"><code class="sourceCode python">&gt;&gt;&gt; loop.run_until_complete(perf_test(<span class="dv">10</span>, <span class="fl">0.5</span>, <span class="dv">5</span>))
+<span class="co"># ... sortie filtrée ...</span>
+&lt;= client_1 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.002629</span>
+&lt;= client_2 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.502093</span>
+&lt;= client_3 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">03.002863</span>
+&lt;= client_4 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.500168</span>
+&lt;= client_5 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">04.500226</span>
+&lt;= client_6 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">05.499894</span>
+&lt;= client_7 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">05.999704</span>
+&lt;= client_8 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">05.998824</span>
+&lt;= client_9 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">05.999883</span>
+&lt;= client_10 servi en <span class="dv">0</span>:<span class="dv">00</span>:<span class="fl">07.498776</span>
+<span class="dv">5</span>/<span class="dv">10</span> clients satisfaits</code></pre>
+<p>À deux clients par seconde, notre serveur n'offre plus de performances satisfaisantes pour la moitié des commandes.</p>
+<p>Nous pouvons donc poser le problème d'optimisation suivant : le gérant du restaurant veut devenir capable de servir 2 clients par seconde avec un temps de traitement inférieur à 5 secondes par commande. Pour cela, il peut :</p>
 <ul>
-<li>Mettre en place une seconde machine à sodas aussi rapide que la première.</li>
-<li>Acheter un nouveau bac à frites pouvant produire 6 portions en 7 secondes.</li>
-<li>Embaucher un quatrième cuisinier.</li>
+<li>Acheter de nouvelles machines à sodas ;</li>
+<li>Embaucher de nouveaux cuisiniers ;</li>
+<li>Remplacer son bac à frites (capable de cuire 5 portions en 4 secondes) par un nouveau, qui peut faire cuire 7 portions en 4 secondes.</li>
 </ul>
-<p>Bon courage !</p>
+<p>Évidemment, chacune de ces solutions a un coût, donc il est préférable pour le gérant de n'apporter que le moins possible de modifications pour tenir son objectif. Si l'on voulait faire un parallèle avec une application réelle :</p>
+<ul>
+<li>Acheter une seconde machine à sodas coûterait l'occupation à 100% d'un cœur de CPU supplémentaire + une augmentation de 100% de la RAM consommée par le service &quot;soda&quot;.</li>
+<li>Embaucher un quatrième cuisinier coûterait un cœur de CPU supplémentaire + une augmentation de 33% de la RAM consommée par le service &quot;cuisine&quot;.</li>
+<li>Le remplacement du bac à frites augmenterait uniquement de 40% la consommation de RAM de ce service…</li>
+</ul>
+<p>En guise d'exercice, vous pouvez vous amuser à modifier les contraintes de notre programme en conséquence pour observer l'impact de vos modifications sur les performances du serveur : vous vous trouverez alors véritablement dans la peau d'un architecte système, le salaire et le stress en moins. ;)</p>
 <h1 id="exemple-n5-les-entréessorties-le-nerf-de-la-guerre"><span class="header-section-number">6</span> Exemple n°5 : Les entrées/sorties, le nerf de la guerre</h1>
 <p>Vous vous demandez peut-être pourquoi on parle tout le temps d'<em>IO</em> en programmation asynchrone. En effet, les entrées/sorties des programmes semblent indissociables du concept d'asynchrone, à tel point que cela se traduit jusque dans le nom de la bibliothèque standard <code>asyncio</code> de Python. Mais <em>pourquoi</em> ?</p>
 <p>Commençons par une définition : une <em>IO</em>, c'est une opération pendant laquelle un programme <em>interagit avec un flux de données</em>. Ce <strong>flux de données</strong> peut être plein de choses : une connexion réseau, les flux standard <code>STDIN</code>, <code>STDOUT</code> ou <code>STDERR</code> du processus en cours d'exécution, un fichier, ou même une abstraction matérielle<a href="#fn5" class="footnoteRef" id="fnref5"><sup>5</sup></a>. « Interagir avec un flux de données », ça veut dire l'<strong>ouvrir</strong>, <strong>lire</strong> ou <strong>écrire</strong> dedans ou le <strong>fermer</strong>.</p>

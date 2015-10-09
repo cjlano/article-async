@@ -1,155 +1,133 @@
 # Exemple n°4 : Modélisons le serveur du *fast food* avec `asyncio`
 
-Maintenant que nous avons compris comment fonctionne sa boucle événementielle,
-il est temps de nous mettre en jambes avec `asyncio` en l'utilisant pour
-modéliser l'exemple du début de cet article : l'employé de *fast food*.
+Maintenant que nous avons fait le tour de toutes les primitives qui permettent
+la programmation asynchrone, il est temps pour nous d'étudier un système
+asynchrone programmé avec `asyncio`. Afin d'éviter d'alourdir le propos dans
+cet exemples, nous nous contenterons de notre exemple *fil rouge* : l'employé
+de fast food, en nous promettant d'aborder des applications réseau réelles dans
+un article ultérieur.
 
-Voici d'abord à quoi ressemble le programme dans sa version synchrone.
+Commençons par implémenter celui-ci avec `asyncio`.
 
-```python
-from time import sleep
-from datetime import datetime
+En réalité, vous n'allez pas tellement être dépaysés puisque le framework
+standard reprend plus ou moins la même API que celle que nous avons développé
+dans les trois derniers exemples. Les seules différences sont que :
 
-def get_burger(client):
-    print("> Commande du burger pour '{}' en cuisine".format(client))
-    sleep(4)
-    print("< Le burger de '{}' est prêt".format(client))
-
-def get_fries(client):
-    print("> Mettre des frites à cuire pour {}".format(client))
-    sleep(8)
-    print("< Les frites de '{}' sont prêtes".format(client))
-
-def get_soda(client):
-    print("> Remplissage du gobelet de soda pour {}".format(client))
-    sleep(2)
-    print("< Le soda de '{}' est prêt".format(client))
-
-def serve(client):
-    print("Préparation de la commande de '{}'".format(client))
-    start = datetime.now()
-    get_burger(client)
-    get_fries(client)
-    get_soda(client)
-    duration = datetime.now() - start
-    print("Commande de '{}' prête en {}".format(client, duration))
-```
-
-Résultat : la commande est prête en 14 secondes.
-
-```python
->>> serve('A')
-Préparation de la commande de 'A'
-> Commande du burger pour 'A' en cuisine
-< Le burger de 'A' est prêt
-> Mettre des frites à cuire pour A
-< Les frites de 'A' sont prêtes
-> Remplissage du gobelet de soda pour A
-< Le soda de 'A' est prêt
-Commande de 'A' prête en 0:00:14.015165
-```
-
-Il ne nous reste plus qu'à implémenter cet exemple avec `asyncio`. Le premier
-jet n'est pas très difficile : il faut juste penser à utiliser la coroutine
-`asyncio.sleep()` plutôt que `time.sleep()` pour que l'endormissement de la
-tâche ne soit pas bloquant.
+* Toutes les coroutines doivent être décorées par `@asyncio.coroutine`, ce qui
+  permet notamment de créer des coroutines qui ne `yield`-ent jamais.
+* `wait()` devient
+  [`asyncio.wait()`](https://docs.python.org/3/library/asyncio-task.html#asyncio.wait).
+* `async_sleep()` devient
+  [`asyncio.sleep()`](https://docs.python.org/3/library/asyncio-task.html#asyncio.sleep).
+* notre coroutine `ensure_future()` devient la **fonction**
+  [`asyncio.ensure_future()`](https://docs.python.org/3/library/asyncio-task.html#asyncio.ensure_future).
+  Notez toutefois que cette fonction n'existe que depuis Python 3.4.4. Dans les
+  versions antérieures, celle-ci s'appelle `asyncio.async()`, mais son nom a été
+  déprécié au profit de `ensure_future()` afin de libérer le mot-clé `async` pour
+  Python 3.5.
 
 ```python
 import asyncio
 from datetime import datetime
 
 @asyncio.coroutine
-def get_burger(client):
-    print("> Commande du burger pour {} en cuisine".format(client))
-    yield from asyncio.sleep(4)
-    print("< Le burger de {} est prêt".format(client))
+def get_soda(client):
+    print("  > Remplissage du soda pour {}".format(client))
+    yield from asyncio.sleep(1)
+    print("  < Le soda de {} est prêt".format(client))
 
 @asyncio.coroutine
 def get_fries(client):
-    print("> Mettre des frites à cuire pour {}".format(client))
-    yield from asyncio.sleep(8)
-    print("< Les frites de {} sont prêtes".format(client))
+    print("    > Démarrage de la cuisson des frites pour {}".format(client))
+    yield from asyncio.sleep(4)
+    print("    < Les frites de {} sont prêtes".format(client))
 
 @asyncio.coroutine
-def get_soda(client):
-    print("> Remplissage du gobelet de soda pour {}".format(client))
-    yield from asyncio.sleep(2)
-    print("< Le soda de {} est prêt".format(client))
+def get_burger(client):
+    print("    > Commande du burger en cuisine pour {}".format(client))
+    yield from asyncio.sleep(3)
+    print("    < Le burger de {} est prêt".format(client))
 
 @asyncio.coroutine
 def serve(client):
-    print("Préparation de la commande de {}".format(client))
-    start = datetime.now()
-    yield from asyncio.wait([
-        get_burger(client),
-        get_fries(client),
-        get_soda(client),
-    ])
-    duration = datetime.now() - start
-    print("Commande de {} prête en {}".format(client, duration))
+    print("=> Commande passée par {}".format(client))
+    start_time = datetime.now()
+    yield from asyncio.wait(
+        [
+            get_soda(client),
+            get_fries(client),
+            get_burger(client)
+        ]
+    )
+    total = datetime.now() - start_time
+    print("<= {} servi en {}".format(client, datetime.now() - start_time))
 ```
 
-Remarquez que nous avons décoré toutes nos coroutines avec le décorateur
-`@asyncio.coroutine` : il s'agit d'une convention pour distinguer les
-fonctions synchrones des coroutines asynchrones dans du code utilisant
-`asyncio`. En dehors de l'indice visuel, ce décorateur permet de
-s'assurer qu'une fonction donnée sera considérée par `asyncio` comme
-une coroutine, même si celle-ci ne `yield` jamais.
-
-Exécutons-le maintenant :
+Rien de franchement dépaysant.
+Pour exécuter ce code, là aussi l'API est sensiblement la même que notre classe
+`Loop` :
 
 ```python
->>> import asyncio
 >>> loop = asyncio.get_event_loop()
->>> loop.run_until_complete(serve('A'))
-Préparation de la commande de A
-> Commande du burger pour A en cuisine
-> Mettre des frites à cuire pour A
-> Remplissage du gobelet de soda pour A
-< Le soda de A est prêt
-< Le burger de A est prêt
-< Les frites de A sont prêtes
-Commande de A prête en 0:00:08.005791
+>>> loop.run_until_complete(serve("A"))
+=> Commande passée par A
+    > Remplissage du soda pour A
+    > Commande du burger en cuisine pour A
+    > Démarrage de la cuisson des frites pour A
+    < Le soda de A est prêt
+    < Le burger de A est prêt
+    < Les frites de A sont prêtes
+<= A servi en 0:00:04.003105
 ```
 
-Nous sommes passés de 14 secondes à 8 secondes.
+Pas d'erreur de syntaxe, le code fonctionne. On peut commencer à travailler.
 
-Et pour servir deux clients à la fois ?
+Remarquons dans un premier temps que notre serveur **manque de réalisme**. En
+effet, si nous lui demandons de servir deux clients en même temps, voilà ce qui
+se produit :
 
 ```python
->>> loop.run_until_complete(asyncio.wait([serve('A'), serve('B')]))
-Préparation de la commande de B
-Préparation de la commande de A
-> Mettre des frites à cuire pour B
-> Commande du burger pour B en cuisine
-> Remplissage du gobelet de soda pour B
-> Remplissage du gobelet de soda pour A
-> Commande du burger pour A en cuisine
-> Mettre des frites à cuire pour A
-< Le soda de B est prêt
-< Le soda de A est prêt
-< Le burger de B est prêt
-< Le burger de A est prêt
-< Les frites de B sont prêtes
-< Les frites de A sont prêtes
-Commande de B prête en 0:00:08.005967
-Commande de A prête en 0:00:08.005940
+>>> loop.run_until_complete(
+...     asyncio.wait([serve("A"), serve("B")])
+... )
+=> Commande passée par A
+=> Commande passée par B
+    > Remplissage du soda pour A
+    > Commande du burger en cuisine pour A
+    > Démarrage de la cuisson des frites pour A
+    > Démarrage de la cuisson des frites pour B
+    > Remplissage du soda pour B
+    > Commande du burger en cuisine pour B
+    < Le soda de A est prêt
+    < Le soda de B est prêt
+    < Le burger de A est prêt
+    < Le burger de B est prêt
+    < Les frites de A sont prêtes
+    < Les frites de B sont prêtes
+<= A servi en 0:00:04.002609
+<= B servi en 0:00:04.002792
 ```
 
-Les deux ont mis tout autant de temps, néanmoins cet affichage ne semble pas
-très réaliste.
+Les deux commandes ont été servies simultanément, de la même façon. La
+préparation des trois ingrédients s'est chevauchée, comme s'il était possible
+de faire couler une infinité de sodas, de cuire une infinité de
+frites *à la demande* pour les clients, et de préparer une infinité de
+hamburgers en parallèle.
 
-En effet :
+En bref : **notre modélisation manque de contraintes**.
 
-* la machine à soda ne peut faire couler qu'un seul soda à la fois, or ici les
-  deux sodas ont été préparés simultanément.
-* la cuisine ne comporte que 3 cuisiniers, donc on ne peut avoir au maximum que
-  3 hamburgers en cours de préparation à un instant donné.
-* le bac à frites fait cuire en général 5 portions de frites en même temps, or
-  ici il a été utilisé deux fois en parallèle pour produire uniquement deux
-  portions de frites.
+Pour améliorer ce programme, nous allons modéliser les contraintes suivantes :
 
-Comment modéliser ces contraintes ?
+* La machine à sodas ne peut faire couler **qu'un seul soda à la fois**. Dans
+  une application réelle, cela reviendrait à *requêter un service synchrone
+  qui ne supporte pas les accès concurrents* ;
+* Il n'y a que 3 cuisiniers dans le restaurant, donc **on ne peut pas préparer
+  plus de trois hamburgers en même temps**. Dans la réalité, cela revient à
+*requêter un service synchrone dont trois instances tournent en parallèle* ;
+* Le bac à frites s'utilise en faisant cuire 5 portions de frites d'un coup,
+  pour servir ensuite 5 clients instantanément. Dans la réalité, cela revient,
+  à peu de choses près, à *simuler un service synchrone qui fonctionne avec un
+  cache*.
 
 La machine à soda est certainement la plus simple. Il est possible de
 verrouiller une ressource de manière à ce qu'une seule tâche puisse y accéder à
@@ -164,9 +142,9 @@ def get_soda(client):
     # Acquisition du verrou
     with (yield from SODA_LOCK):
         # Une seule tâche à la fois peut exécuter ce bloc
-        print("> Remplissage du gobelet de soda pour {}".format(client))
-        yield from asyncio.sleep(2)
-        print("< Le soda de {} est prêt".format(client))
+        print("    > Remplissage du soda pour {}".format(client))
+        yield from asyncio.sleep(1)
+        print("    < Le soda de {} est prêt".format(client))
 ```
 
 Le `with (yield from SODA_LOCK)` signifie que lorsque le serveur arrive à la
@@ -175,7 +153,8 @@ machine à soda pour y déposer un gobelet :
 * soit la machine est libre (déverrouillée), auquel cas il peut la verrouiller
   pour l'utiliser immédiatement,
 * soit celle-ci est déjà en train de fonctionner, auquel cas il attend que le
-  soda en cours de préparation soit prêt avant de se servir de la machine.
+  soda en cours de préparation soit prêt avant de verrouiller la machine à son
+  tour.
 
 Passons à la cuisine. Seuls 3 burgers peuvent être fabriqués en même temps. Cela
 peut se modéliser en utilisant un **sémaphore** (`asyncio.Semaphore`), qui est
@@ -187,11 +166,10 @@ BURGER_SEM = asyncio.Semaphore(3)
 
 @asyncio.coroutine
 def get_burger(client):
-    print("> Commande du burger pour {} en cuisine".format(client))
+    print("    > Commande du burger en cuisine pour {}".format(client))
     with (yield from BURGER_SEM):
-        print("* Le burger de {} est en préparation".format(client))
-        yield from asyncio.sleep(4)
-        print("< Le burger de {} est prêt".format(client))
+        yield from asyncio.sleep(3)
+        print("    < Le burger de {} est prêt".format(client))
 ```
 
 Le `with (yield from BURGER_SEM)` veut dire que lorsqu'une commande est passée
@@ -216,23 +194,21 @@ lancer une nouvelle fournée !
 Voici comment on pourrait s'y prendre :
 
 ```python
-FRIES_PARTS = 0
+FRIES_COUNTER = 0
 FRIES_LOCK = asyncio.Lock()
 
 @asyncio.coroutine
 def get_fries(client):
-    global FRIES_PARTS
+    global FRIES_COUNTER
     with (yield from FRIES_LOCK):
-        print(
-            "> Récupération d'une portion de frites pour {}".format(client)
-        )
-        if FRIES_PARTS == 0:
-            print("* Mettre des frites à cuire")
-            yield from asyncio.sleep(8)
-            FRIES_PARTS = 5
-            print("* Les frites sont prêtes"))
-        FRIES_PARTS -= 1
-        print("< Les frites de {} sont prêtes".format(client))
+        print("    > Récupération des frites pour {}".format(client))
+        if FRIES_COUNTER == 0:
+            print("   ** Démarrage de la cuisson des frites")
+            yield from asyncio.sleep(4)
+            FRIES_COUNTER = 5
+            print("   ** Les frites sont cuites")
+        FRIES_COUNTER -= 1
+        print("    < Les frites de {} sont prêtes".format(client))
 ```
 
 Dans cet exemple, on place un verrou sur le bac à frites pour qu'un seul
@@ -241,35 +217,33 @@ frites, soit celui-ci contient encore des portions de frites, auquel cas il en
 récupère une et retourne immédiatement, soit le bac est vide, donc le serveur
 met des frites à cuire avant de pouvoir en récupérer une portion.
 
-Voyons voir ce que cela donne à l'exécution :
+À l'exécution :
 
 ```python
 >>> loop.run_until_complete(asyncio.wait([serve('A'), serve('B')]))
-Préparation de la commande de B
-Préparation de la commande de A
-> Remplissage du gobelet de soda pour B
-> Commande du burger pour B en cuisine
-* Le burger de B est en préparation
-> Récupération d'une portion de frites pour B
-* Mettre des frites à cuire
-> Commande du burger pour A en cuisine
-* Le burger de A est en préparation
-< Le soda de B est prêt
-> Remplissage du gobelet de soda pour A
-< Le burger de B est prêt
-< Le burger de A est prêt
-< Le soda de A est prêt
-* Les frites sont prêtes
-< Les frites de B sont prêtes
-> Récupération d'une portion de frites pour A
-< Les frites de A sont prêtes
-Commande de B prête en 0:00:08.006742
-Commande de A prête en 0:00:08.006859
-({Task(<serve>)<result=None>, Task(<serve>)<result=None>}, set())
+=> Commande passée par B
+=> Commande passée par A
+    > Remplissage du soda pour B
+    > Récupération des frites pour B
+   ** Démarrage de la cuisson des frites
+    > Commande du burger en cuisine pour B
+    > Commande du burger en cuisine pour A
+    < Le soda de B est prêt
+    > Remplissage du soda pour A
+    < Le soda de A est prêt
+    < Le burger de B est prêt
+    < Le burger de A est prêt
+   ** Les frites sont cuites
+    < Les frites de B sont prêtes
+    > Récupération des frites pour A
+    < Les frites de A sont prêtes
+<= B servi en 0:00:04.003111
+<= A servi en 0:00:04.003093
 ```
 
-Et voilà. Nos deux tâches prennent le même temps, mais s'arrangent pour ne pas
-accéder simultanément à la machine à sodas ni au bac à frites.
+Nos deux tâches prennent toujours le même temps à s'exécuter, mais
+s'arrangent pour ne pas accéder simultanément à la machine à sodas ni au bac à
+frites.
 
 Voyons maintenant ce que cela donne si 10 clients passent commande en même
 temps :
@@ -279,128 +253,139 @@ temps :
 ...     asyncio.wait([serve(clt) for clt in 'ABCDEFGHIJ'])
 ... )
 ...
-# ...
-Commande de C prête en 0:00:08.009554
-Commande de G prête en 0:00:08.009934
-Commande de B prête en 0:00:08.010281
-Commande de D prête en 0:00:08.014250
-Commande de H prête en 0:00:10.017237
-Commande de I prête en 0:00:16.014170
-Commande de E prête en 0:00:16.014511
-Commande de A prête en 0:00:16.022411
-Commande de J prête en 0:00:18.023141
-Commande de F prête en 0:00:20.026096
+# ... sortie filtrée ...
+<= C servi en 0:00:04.004512
+<= D servi en 0:00:04.004378
+<= E servi en 0:00:04.004262
+<= F servi en 0:00:06.008072
+<= A servi en 0:00:06.008074
+<= G servi en 0:00:08.006399
+<= H servi en 0:00:09.009187
+<= B servi en 0:00:09.009118
+<= I servi en 0:00:09.015023
+<= J servi en 0:00:12.011539
 ```
 
 On se rend compte que les performances de notre serveur de fast-food se
-dégradent plus ou moins, même si on est toujours loin des 140 secondes que le
-serveur aurait pris s'il avait traité toutes ces commandes de façon synchrone.
+dégradent : certains clients attendent jusqu'à trois fois plus longtemps que
+les autres.
 
-Cela dit, il est plutôt rare que les clients passent leurs commandes tous en
-même temps. Une modélisation plus proche de la réalité serait que ces dix
-commandes arrivent à deux secondes d'intervalle :
+Cela n'a rien de surprenant. En fait, les performances d'une application
+asynchrone ne se mesurent pas en *nombre de tâches traitées simultanément*,
+mais plutôt, comme n'importe quel serveur, en *nombre de tâches traitées dans
+le temps*. Il est évident que si 10 clients viennent manger dans un fast-food,
+il y a relativement peu de chances qu'ils arrivent tous en même temps : ils
+vont plutôt passer leur commande à raison d'une par seconde, par exemple.
+
+Par contre, il est très important de noter que c'est bien *le temps d'attente*
+individuel de chaque client qui compte pour mesurer les performances (la
+qualité) du service. Si un client attend trop longtemps, il ne sera pas
+satisfait, peu importe s'il est tout seul dans le restaurant ou que celui-ci
+est bondé.
+
+Pour ces raisons, il faut que nous ayons une idée des **objectifs de
+performances** de notre serveur, c'est-à-dire que nous fixions, comme but :
+
+* un *temps d'attente maximal* à ne pas dépasser pour servir un client,
+* un *volume* de requêtes à tenir par seconde.
+
+Écrivons maintenant une coroutine pour tester les performances
+de notre serveur :
 
 ```python
+# La fonction ensure_future est définie à partir de Python 3.4.4
+# Ce bloc la rend accessible pour toutes les versions de Python 3.4
+try:
+    from asyncio import ensure_future
+except ImportError:
+    asyncio.ensure_future = asyncio.async
+
 @asyncio.coroutine
-def test():
+def perf_test(nb_requests, period, timeout):
     tasks = []
-    for client in 'ABCDEFGHIJ':
-        # appel équivalent à notre fonction `launch()`
-        task = asyncio.async(serve(client))
-        tasks.append(task)
-        yield from asyncio.sleep(2)
-    yield from asyncio.wait(tasks)
+    # On lance 'nb_requests' commandes à 'period' secondes d'intervalle
+    for idx in range(1, nb_requests + 1):
+        client_name = "client_{}".format(idx)
+        tsk = asyncio.ensure_future(serve(client_name))
+        tasks.append(tsk)
+        yield from asyncio.sleep(period)
+
+    finished, _ = yield from asyncio.wait(tasks)
+    success = set()
+    for tsk in finished:
+        if tsk.result().seconds < timeout:
+            success.add(tsk)
+
+    print("{}/{} clients satisfaits".format(len(success), len(finished)))
 ```
 
-Dans ces conditions, les temps d'attente individuels de chaque client sont
-assez largement réduits :
+Cette coroutine va lancer un certain nombre de commandes, régulièrement, et
+compter à la fin le nombre de commandes qui ont été honorées dans les temps.
+
+Essayons de lancer 10 commandes à 1 seconde d'intervalle, avec pour
+objectif que les clients soient servis en 5 secondes maximum :
 
 ```python
->>> loop = asyncio.get_event_loop()
->>> loop = asyncio.run_until_complete(test())
-Préparation de la commande de A
-Préparation de la commande de B
-Préparation de la commande de C
-Préparation de la commande de D
-Commande de A prête en 0:00:08.004599
-Commande de B prête en 0:00:06.002353
-Préparation de la commande de E
-Commande de C prête en 0:00:04.002907
-Préparation de la commande de F
-Commande de D prête en 0:00:04.004343
-Préparation de la commande de G
-Commande de E prête en 0:00:04.004445
-Préparation de la commande de H
-Préparation de la commande de I
-Commande de F prête en 0:00:08.005227
-Commande de G prête en 0:00:06.005087
-Préparation de la commande de J
-Commande de H prête en 0:00:04.003595
-Commande de I prête en 0:00:04.003620
-Commande de J prête en 0:00:04.004184
+>>> loop.run_until_complete(perf_test(10, 1, 5))
+# ... sortie filtrée ...
+<= client_1 servi en 0:00:04.004044
+<= client_2 servi en 0:00:03.002792
+<= client_3 servi en 0:00:03.003338
+<= client_4 servi en 0:00:03.003653
+<= client_5 servi en 0:00:03.003815
+<= client_6 servi en 0:00:04.003746
+<= client_7 servi en 0:00:03.003412
+<= client_8 servi en 0:00:03.002512
+<= client_9 servi en 0:00:03.003409
+<= client_10 servi en 0:00:03.003622
+10/10 clients satisfaits
 ```
 
-À raison d'un client toutes les deux secondes, notre serveur est capable de
-traiter des commandes avec un temps moyen de 5.2 secondes, le maximum étant 8
-secondes et le minimum à 4 secondes.
-
-Et si nous *stressions* un peu notre serveur et qu'on lui passait une commande
-par seconde ?
+Ce test nous indique que notre serveur tient facilement une charge d'un client
+par seconde. Essayons de monter en charge en passant à deux clients par
+seconde :
 
 ```python
-@asyncio.coroutine
-def test():
-    tasks = []
-    for client in 'ABCDEFGHIJ':
-        task = asyncio.async(serve(client))
-        tasks.append(task)
-        yield from asyncio.sleep(1)
-    yield from asyncio.wait(tasks)
+>>> loop.run_until_complete(perf_test(10, 0.5, 5))
+# ... sortie filtrée ...
+<= client_1 servi en 0:00:04.002629
+<= client_2 servi en 0:00:03.502093
+<= client_3 servi en 0:00:03.002863
+<= client_4 servi en 0:00:04.500168
+<= client_5 servi en 0:00:04.500226
+<= client_6 servi en 0:00:05.499894
+<= client_7 servi en 0:00:05.999704
+<= client_8 servi en 0:00:05.998824
+<= client_9 servi en 0:00:05.999883
+<= client_10 servi en 0:00:07.498776
+5/10 clients satisfaits
 ```
 
-Comme prévu, celui-ci, sous la pression, est un peu moins efficace à cause des
-contraintes des différentes machines qu'il utilise, même si l'on reste tout à
-fait loin de l'inefficacité pathologique de la version synchrone :
+À deux clients par seconde, notre serveur n'offre plus de performances
+satisfaisantes pour la moitié des commandes.
 
-```python
->>> loop = asyncio.get_event_loop()
->>> loop.run_until_complete(test())
-Préparation de la commande de A
-Préparation de la commande de B
-Préparation de la commande de C
-Préparation de la commande de D
-Préparation de la commande de E
-Préparation de la commande de F
-Préparation de la commande de G
-Préparation de la commande de H
-Commande de A prête en 0:00:08.003498
-Commande de B prête en 0:00:07.001989
-Commande de C prête en 0:00:06.000267
-Commande de D prête en 0:00:05.004673
-Préparation de la commande de I
-Préparation de la commande de J
-Commande de E prête en 0:00:06.005059
-Commande de F prête en 0:00:11.002432
-Commande de G prête en 0:00:10.002475
-Commande de H prête en 0:00:09.000938
-Commande de I prête en 0:00:10.002911
-Commande de J prête en 0:00:11.004703
-```
+Nous pouvons donc poser le problème d'optimisation suivant : le gérant du
+restaurant veut devenir capable de servir 2 clients par seconde avec un temps
+de traitement inférieur à 5 secondes par commande. Pour cela, il peut :
 
-On peut se demander à quel endroit le service est ralenti quand on sert 1
-client par seconde :
+* Acheter de nouvelles machines à sodas ;
+* Embaucher de nouveaux cuisiniers ;
+* Remplacer son bac à frites (capable de cuire 5 portions en 4 secondes) par un
+  nouveau, qui peut faire cuire 7 portions en 4 secondes.
 
-* S'agit-il de la machine à sodas, qui produit un soda toutes les 2 secondes ?
-* S'agit-il du bac à frites, qui peut produire 5 portions en 8 secondes ?
-* Ou bien s'agit-il de la cuisine, qui produit un hamburger en 4 secondes, mais
-  reste limitée à trois cuisiniers ?
+Évidemment, chacune de ces solutions a un coût, donc il est préférable pour le
+gérant de n'apporter que le moins possible de modifications pour tenir son
+objectif. Si l'on voulait faire un parallèle avec une application réelle :
 
-Les réponses à ces questions vous sont laissées en guise d'exercice. Vous
-pouvez essayer d'apporter les modifications suivantes au modèle, pour aider le
-gérant du restaurant à optimiser son service :
+* Acheter une seconde machine à sodas coûterait l'occupation à 100% d'un cœur
+  de CPU supplémentaire + une augmentation de 100% de la RAM consommée par le
+service "soda".
+* Embaucher un quatrième cuisinier coûterait un cœur de CPU supplémentaire +
+  une augmentation de 33% de la RAM consommée par le service "cuisine".
+* Le remplacement du bac à frites augmenterait uniquement de 40% la
+  consommation de RAM de ce service…
 
-* Mettre en place une seconde machine à sodas aussi rapide que la première.
-* Acheter un nouveau bac à frites pouvant produire 6 portions en 7 secondes.
-* Embaucher un quatrième cuisinier.
-
-Bon courage !
+En guise d'exercice, vous pouvez vous amuser à modifier les contraintes de
+notre programme en conséquence pour observer l'impact de vos modifications sur
+les performances du serveur : vous vous trouverez alors véritablement dans la
+peau d'un architecte système, le salaire et le stress en moins. ;)
