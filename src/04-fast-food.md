@@ -60,7 +60,8 @@ def serve(client):
         ]
     )
     total = datetime.now() - start_time
-    print("<= {} servi en {}".format(client, datetime.now() - start_time))
+    print("<= {} servi en {}".format(client, total))
+    return total
 ```
 
 Rien de franchement dépaysant.
